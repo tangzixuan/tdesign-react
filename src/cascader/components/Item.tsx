@@ -2,15 +2,14 @@ import React, { forwardRef, useMemo } from 'react';
 import classNames from 'classnames';
 import { ChevronRightIcon as TdChevronRightIcon } from 'tdesign-icons-react';
 
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import TLoading from '../../loading';
 import Checkbox from '../../checkbox';
 
 import useConfig from '../../hooks/useConfig';
 import useGlobalIcon from '../../hooks/useGlobalIcon';
 import useDomRefCallback from '../../hooks/useDomRefCallback';
-import useCommonClassName from '../../_util/useCommonClassName';
-import useRipple from '../../_util/useRipple';
+import useCommonClassName from '../../hooks/useCommonClassName';
 
 import { getFullPathLabel } from '../core/helper';
 import { getCascaderItemClass, getCascaderItemIconClass } from '../core/className';
@@ -38,9 +37,11 @@ const Item = forwardRef(
     const { classPrefix: prefix } = useConfig();
     const { ChevronRightIcon } = useGlobalIcon({ ChevronRightIcon: TdChevronRightIcon });
     const COMPONENT_NAME = `${prefix}-cascader__item`;
+    // 暂时去掉动画效果 长列表在safari中有异常
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [itemDom, setRefCurrent] = useDomRefCallback();
 
-    useRipple(ref?.current || itemDom);
+    // useRipple(ref?.current || itemDom);
 
     /**
      * class
@@ -122,7 +123,7 @@ const Item = forwardRef(
 
     return (
       <li
-        ref={ref || setRefCurrent}
+        ref={ref}
         className={itemClass}
         onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
@@ -132,11 +133,13 @@ const Item = forwardRef(
         }}
         onMouseEnter={(e: React.MouseEvent) => {
           e.stopPropagation();
+          if (cascaderContext.inputVal && isFiltering) return;
           onMouseEnter(node);
         }}
       >
         {multiple ? RenderCheckBox(node, cascaderContext) : RenderLabelContent(node, cascaderContext)}
-        {node.children &&
+        {!cascaderContext.inputVal &&
+          node.children &&
           (node.loading ? (
             <TLoading className={iconClass} loading={true} size="small" />
           ) : (

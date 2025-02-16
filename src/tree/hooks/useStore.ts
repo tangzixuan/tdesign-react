@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import cloneDeep from 'lodash/cloneDeep';
-import useUpdateEffect from '../../_util/useUpdateEffect';
+import { cloneDeep } from 'lodash-es';
+import useUpdateLayoutEffect from '../../hooks/useUpdateLayoutEffect';
 import usePrevious from '../../hooks/usePrevious';
-import TreeStore from '../../_common/js/tree/tree-store';
-import { usePersistFn } from '../../_util/usePersistFn';
+import TreeStore from '../../_common/js/tree-v1/tree-store';
+import { usePersistFn } from '../../hooks/usePersistFn';
 
 import type { TdTreeProps } from '../type';
 import type { TypeEventState } from '../interface';
-import type { TypeTreeNodeData } from '../../_common/js/tree/types';
+import type { TreeNodeValue, TypeTreeNodeData } from '../../_common/js/tree-v1/types';
+import TreeNode from '../../_common/js/tree-v1/tree-node';
 
-export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
+export function useStore(
+  props: TdTreeProps & { indeterminate: any; setTreeIndeterminate: any },
+  refresh: () => void,
+): TreeStore {
   const storeRef = useRef<TreeStore>();
   const [filterChanged, toggleFilterChanged] = useState(false);
   const [prevExpanded, changePrevExpanded] = useState(null);
@@ -34,6 +38,8 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
     valueMode,
     filter,
     onLoad,
+    indeterminate,
+    setTreeIndeterminate,
     allowFoldNodeOnFilter = false,
   } = props;
 
@@ -129,7 +135,6 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
     // 刷新节点，必须在配置选中之前执行
     // 这样选中态联动判断才能找到父节点
     store.refreshNodes();
-
     // 初始化选中状态
     if (Array.isArray(value)) {
       store.setChecked(value);
@@ -157,7 +162,7 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
   /* ======== 由 props 引发的 store 更新 ======= */
   const store = storeRef.current;
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
     if (data && Array.isArray(data)) {
       const expanded = store.getExpanded();
       const checked = store.getChecked();
@@ -170,7 +175,7 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
     }
   }, [data, store]);
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
     store.setConfig({
       keys,
       expandAll,
@@ -181,6 +186,7 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
       activeMultiple,
       disabled,
       checkable,
+      draggable,
       checkStrictly,
       load,
       lazy,
@@ -192,6 +198,7 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
     activable,
     activeMultiple,
     checkStrictly,
+    draggable,
     checkable,
     disabled,
     expandAll,
@@ -205,26 +212,50 @@ export function useStore(props: TdTreeProps, refresh: () => void): TreeStore {
     valueMode,
   ]);
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
+    if (expandAll) {
+      const valueList = store
+        .getNodes()
+        .filter((node) => Array.isArray(node.children) && node.children.length)
+        .map((node) => node.value);
+      store.setExpanded(valueList);
+    } else {
+      store.replaceExpanded(prevExpanded);
+      changePrevExpanded(null);
+    }
+  }, [store, expandAll]);
+
+  useUpdateLayoutEffect(() => {
     if (Array.isArray(value)) {
       store.replaceChecked(value);
+      const checkedValue = store.getCheckedNodes().map((v: TreeNode) => v.data[keys?.value || 'value']);
+      const indeterminateConflict = checkedValue.filter((v) => indeterminate.includes(v));
+      if (indeterminateConflict.length) {
+        setTreeIndeterminate(indeterminate.filter((v: TreeNodeValue) => !indeterminateConflict.includes(v)));
+      }
     }
   }, [store, value, data]);
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
     if (Array.isArray(expanded)) {
       const expandedArr = getExpandedArr(expanded, store);
       store.replaceExpanded(expandedArr);
     }
   }, [expanded, store]);
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
     if (Array.isArray(actived)) {
       store.replaceActived(actived);
     }
   }, [actived, store]);
 
-  useUpdateEffect(() => {
+  useUpdateLayoutEffect(() => {
+    if (Array.isArray(indeterminate)) {
+      store.replaceIndeterminate(indeterminate);
+    }
+  }, [indeterminate, store, data]);
+
+  useUpdateLayoutEffect(() => {
     store.setConfig({
       filter,
     });

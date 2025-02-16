@@ -1,5 +1,5 @@
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
-import get from 'lodash/get';
+import React, { useRef, forwardRef, useImperativeHandle, ReactNode, RefAttributes } from 'react';
+import { get } from 'lodash-es';
 import classNames from 'classnames';
 import BaseTable from './BaseTable';
 import useColumnController from './hooks/useColumnController';
@@ -20,12 +20,14 @@ import { StyledProps } from '../common';
 import { useEditableRow } from './hooks/useEditableRow';
 import { primaryTableDefaultProps } from './defaultProps';
 import { CheckboxGroupValue } from '../checkbox';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 export { BASE_TABLE_ALL_EVENTS } from './BaseTable';
 
 export interface TPrimaryTableProps extends PrimaryTableProps, StyledProps {}
 
-const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref) => {
+const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((originalProps, ref) => {
+  const props = useDefaultProps<TPrimaryTableProps>(originalProps, primaryTableDefaultProps);
   const { columns, columnController, editableRowKeys, style, className } = props;
   const primaryTableRef = useRef(null);
   const innerPagination = useRef<PaginationProps>(props.pagination);
@@ -34,8 +36,14 @@ const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref
   // 自定义列配置功能
   const { tDisplayColumns, renderColumnController } = useColumnController(props, { onColumnReduce });
   // 展开/收起行功能
-  const { showExpandedRow, showExpandIconColumn, getExpandColumn, renderExpandedRow, onInnerExpandRowClick } =
-    useRowExpand(props);
+  const {
+    showExpandedRow,
+    showExpandIconColumn,
+    getExpandColumn,
+    renderExpandedRow,
+    onInnerExpandRowClick,
+    getExpandedRowClass,
+  } = useRowExpand(props);
   // 排序功能
   const { renderSortIcon } = useSorter(props);
   // 行选中功能
@@ -73,7 +81,7 @@ const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref
 
   // 如果想给 TR 添加类名，请在这里补充，不要透传更多额外 Props 到 BaseTable
   const tRowClassNames = (() => {
-    const tClassNames = [props.rowClassName, selectedRowClassNames];
+    const tClassNames = [props.rowClassName, selectedRowClassNames, getExpandedRowClass];
     return tClassNames.filter((v) => v);
   })();
 
@@ -207,7 +215,12 @@ const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref
     }
   };
 
-  function formatNode(api: string, renderInnerNode: Function, condition: boolean, extra?: { reverse?: boolean }) {
+  function formatNode(
+    api: string,
+    renderInnerNode: () => ReactNode,
+    condition: boolean,
+    extra?: { reverse?: boolean },
+  ) {
     if (!condition) return props[api];
     const innerNode = renderInnerNode();
     const propsNode = props[api];
@@ -257,7 +270,6 @@ const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref
   if (props.expandOnRowClick || props.selectOnRowClick) {
     baseTableProps.onRowClick = onInnerRowClick;
   }
-
   return (
     <BaseTable
       ref={primaryTableRef}
@@ -271,10 +283,6 @@ const PrimaryTable = forwardRef<PrimaryTableRef, TPrimaryTableProps>((props, ref
 
 PrimaryTable.displayName = 'PrimaryTable';
 
-PrimaryTable.defaultProps = primaryTableDefaultProps;
-
 export default PrimaryTable as <T extends TableRowData = TableRowData>(
-  props: PrimaryTableProps<T> & {
-    ref?: React.Ref<PrimaryTableRef>;
-  },
+  props: PrimaryTableProps<T> & RefAttributes<PrimaryTableRef>,
 ) => React.ReactElement;

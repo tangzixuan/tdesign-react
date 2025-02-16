@@ -1,5 +1,5 @@
 import React, { useEffect, useState, MutableRefObject } from 'react';
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import useClassName from './useClassName';
 import TButton from '../../button';
 import { TdPrimaryTableProps, PrimaryTableCol, TableRowData, FilterValue, TableFilterChangeContext } from '../type';
@@ -11,8 +11,8 @@ import { getColumnsResetValue } from '../../_common/js/table/utils';
 function isFilterValueExist(value: any) {
   const isArrayTrue = value instanceof Array && value.length;
   const isObject = typeof value === 'object' && !(value instanceof Array);
-  const isObjectTrue = isObject && Object.keys(value).length;
-  return isArrayTrue || isObjectTrue || !['null', '', 'undefined'].includes(String(value));
+  const isObjectTrue = isObject && Object.keys(value || {}).length;
+  return isArrayTrue || isObjectTrue || ![null, '', undefined].includes(value);
 }
 
 // 筛选条件不为空，才需要显示筛选结果行

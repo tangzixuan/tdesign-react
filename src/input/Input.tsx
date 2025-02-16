@@ -5,8 +5,8 @@ import {
   BrowseOffIcon as TdBrowseOffIcon,
   CloseCircleFilledIcon as TdCloseCircleFilledIcon,
 } from 'tdesign-icons-react';
-import isFunction from 'lodash/isFunction';
-import useLayoutEffect from '../_util/useLayoutEffect';
+import { isFunction } from 'lodash-es';
+import useLayoutEffect from '../hooks/useLayoutEffect';
 import forwardRefWithStatics from '../_util/forwardRefWithStatics';
 import useConfig from '../hooks/useConfig';
 import useGlobalIcon from '../hooks/useGlobalIcon';
@@ -56,6 +56,7 @@ const Input = forwardRefWithStatics(
     const {
       type,
       autoWidth,
+      borderless,
       placeholder = t(local.placeholder),
       disabled,
       status,
@@ -232,7 +233,6 @@ const Input = forwardRefWithStatics(
         onBlur={handleBlur}
         onPaste={handlePaste}
         name={name}
-        maxLength={maxlength && !allowInputOverMax ? maxlength : null}
       />
     );
 
@@ -248,6 +248,7 @@ const Input = forwardRefWithStatics(
           [`${classPrefix}-is-${tStatus}`]: tStatus && tStatus !== 'default',
           [`${classPrefix}-input--prefix`]: prefixIcon || labelContent,
           [`${classPrefix}-input--suffix`]: suffixIconContent || suffixContent,
+          [`${classPrefix}-input--borderless`]: borderless,
           [`${classPrefix}-input--focused`]: isFocused,
         })}
         onMouseEnter={handleMouseEnter}
@@ -277,6 +278,7 @@ const Input = forwardRefWithStatics(
     );
 
     function togglePasswordVisible() {
+      if (disabled) return;
       const toggleType = renderType === 'password' ? 'text' : 'password';
       setRenderType(toggleType);
     }
@@ -301,6 +303,8 @@ const Input = forwardRefWithStatics(
     // https://github.com/Tencent/tdesign-react/issues/2320
     function handleMouseDown(e: React.MouseEvent<SVGSVGElement, globalThis.MouseEvent>) {
       e.stopPropagation();
+      // 兼容React16
+      e.nativeEvent.stopImmediatePropagation();
     }
     function handleClear(e: React.MouseEvent<SVGSVGElement>) {
       onChange?.('', { e, trigger: 'clear' });

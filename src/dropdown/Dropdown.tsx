@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { isValidElement, useState } from 'react';
 import classNames from 'classnames';
-import omit from 'lodash/omit';
+import { omit } from 'lodash-es';
 import { DropdownOption, TdDropdownProps } from './type';
 import { StyledProps } from '../common';
 import Popup, { PopupVisibleChangeContext } from '../popup';
@@ -48,7 +48,7 @@ const Dropdown: React.FC<DropdownProps> & {
   };
 
   const handleVisibleChange = (visible: boolean, context: PopupVisibleChangeContext) => {
-    if (disabled) return;
+    if (disabled || !options.length) return;
     togglePopupVisible(visible);
     popupProps?.onVisibleChange?.(visible, context);
   };
@@ -66,6 +66,9 @@ const Dropdown: React.FC<DropdownProps> & {
     overlayInnerStyle: style,
   };
 
+  const child = arrayChildren?.[0];
+  const dropDownTrigger = isValidElement(child) ? React.cloneElement(child as React.ReactElement, { disabled }) : child;
+
   return (
     <Popup
       expandAnimation={true}
@@ -74,7 +77,7 @@ const Dropdown: React.FC<DropdownProps> & {
       onVisibleChange={handleVisibleChange}
       {...popupParams}
     >
-      {arrayChildren?.[0]}
+      {dropDownTrigger}
     </Popup>
   );
 };

@@ -1,6 +1,6 @@
-import React, { ReactElement, useEffect, useMemo, useState } from 'react';
+import React, { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import classNames from 'classnames';
-import isNumber from 'lodash/isNumber';
+import { isNumber } from 'lodash-es';
 import useConfig from '../hooks/useConfig';
 import { CheckContext, CheckContextValue, CheckProps } from '../common/Check';
 import { CheckboxGroupValue, CheckboxOption, CheckboxOptionObj, TdCheckboxGroupProps, TdCheckboxProps } from './type';
@@ -52,7 +52,10 @@ const CheckboxGroup = <T extends CheckboxGroupValue = CheckboxGroupValue>(props:
   const intervalOptions =
     Array.isArray(options) && options.length > 0
       ? options
-      : React.Children.map(children, (child) => (child as ReactElement).props) || [];
+      : React.Children.map(
+          children,
+          (child: JSX.Element) => child?.type?.displayName === Checkbox.displayName && (child as ReactElement).props,
+        ) || [];
 
   const optionsWithoutCheckAll = intervalOptions.filter((t) => typeof t !== 'object' || !t.checkAll);
   const optionsWithoutCheckAllValues = [];
@@ -64,12 +67,13 @@ const CheckboxGroup = <T extends CheckboxGroupValue = CheckboxGroupValue>(props:
   const [internalValue, setInternalValue] = useControlled(props, 'value', onChange);
   const [localMax, setLocalMax] = useState(max);
 
-  const checkedSet = useMemo(() => {
+  const getCheckedSet = useCallback(() => {
     if (!Array.isArray(internalValue)) {
       return new Set<ItemType>([]);
     }
     return new Set<ItemType>([].concat(internalValue));
   }, [internalValue]);
+  const checkedSet = useMemo(() => getCheckedSet(), [getCheckedSet]);
 
   // 用于决定全选状态的属性
   const indeterminate = useMemo(() => {
@@ -118,6 +122,7 @@ const CheckboxGroup = <T extends CheckboxGroupValue = CheckboxGroupValue>(props:
             checkProps.onChange(checked, { e });
           }
 
+          const checkedSet = getCheckedSet();
           // 全选时的逻辑处理
           if (checkProps.checkAll) {
             checkedSet.clear();
@@ -133,11 +138,14 @@ const CheckboxGroup = <T extends CheckboxGroupValue = CheckboxGroupValue>(props:
             checkedSet.delete(checkValue);
           }
 
+          const currentOptionChecked = optionsWithoutCheckAll.find((item) => item.value === checkValue);
+
           // 此处 `as` 是因为 `Array.from` 会导致 `checkSet` 的 generic type 丢失
           setInternalValue(Array.from(checkedSet) as T, {
             e,
             current: checkProps.checkAll ? undefined : (checkValue as TdCheckboxProps),
             type: checked ? 'check' : 'uncheck',
+            option: checkProps.checkAll ? undefined : currentOptionChecked,
           });
         },
       };
@@ -152,21 +160,17 @@ const CheckboxGroup = <T extends CheckboxGroupValue = CheckboxGroupValue>(props:
       <CheckContext.Provider value={context}>
         {useOptions
           ? options.map((v: any, index) => {
-              const type = typeof v;
-              switch (type) {
-                case 'string': {
-                  const vs = v as string;
+              switch (typeof v) {
+                case 'string':
                   return (
-                    <Checkbox key={index} label={vs} value={vs}>
+                    <Checkbox key={index} label={v} value={v}>
                       {v}
                     </Checkbox>
                   );
-                }
                 case 'number': {
-                  const vs = v as number;
                   return (
-                    <Checkbox key={index} label={vs} value={vs}>
-                      {v}
+                    <Checkbox key={index} label={v} value={v}>
+                      {String(v)}
                     </Checkbox>
                   );
                 }

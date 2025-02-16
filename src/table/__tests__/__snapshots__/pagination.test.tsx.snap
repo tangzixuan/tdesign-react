@@ -1,4 +1,4 @@
-// Vitest Snapshot v1
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`BaseTable Pagination > locale data pagination controlled > both pagination.pageSize and pagination.current changed 1`] = `
 NodeList [
@@ -379,14 +379,12 @@ exports[`BaseTable Pagination > locale data pagination controlled > pagination.c
             >
               <div
                 class="t-input__wrap t-input--auto-width"
+                spellcheck="false"
                 value="5 条/页"
               >
                 <div
-                  class="t-input t-is-readonly t-align-left t-input--prefix t-input--suffix"
+                  class="t-input t-is-readonly t-align-left t-input--suffix"
                 >
-                  <div
-                    class="t-input__prefix"
-                  />
                   <input
                     class="t-input__inner"
                     placeholder="请选择"

@@ -1,5 +1,42 @@
 :: BASE_DOC ::
 
+### Called Popup via plugin
+
+Calling Popup through the plug-in method is used to render Popup in a scene with existing nodes. At the same time, no matter how it is called, it will only be mounted on one node, which is used to reduce the number of Popup rendering nodes on the page.
+
+Support functional calls `PopupPlugin` 。
+- `PopupPlugin(triggerElement, content, popupProps)`
+
+{{ plugin }}
+
+### Dynamic Adaptation
+
+When the trigger or popup display content changes dynamically, the position is adjusted adaptively
+
+{{ dynamic }}
+
+### popperOptions usage
+
+https://popper.js.org/docs/v2/constructors/#types
+
+- `popperOptions` = `Options`
+
+{{ popper-options }}
+
+## FAQ
+
+### How to solve the problem of position offset when nesting `Popup` components?
+
+Currently, this can be solved by `Fragment` or other `HTML` elements
+
+```js
+<Popup content="Popup Content">
+  <>
+    {children}
+  </>
+</Popup>
+```
+
 ## API
 ### Popup Props
 

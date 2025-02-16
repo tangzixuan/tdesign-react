@@ -531,6 +531,31 @@ module.exports = {
       }, [changedProps]);
     `,
   },
+  'time-picker': {
+    importStr: `
+      import TimePickerConfigProps from './time-picker-props.json';\n
+      import TimeRangePickerConfigProps from './time-range-picker-props.json';\n
+      import { TimePicker, TimeRangePicker } from 'tdesign-react';\n`,
+    configStr: `
+      const [configList, setConfigList] = useState(TimePickerConfigProps);
+    `,
+    panelStr: `
+      const panelList = [
+        { label: 'timePicker', value: 'timePicker', config: TimePickerConfigProps },
+        { label: 'timeRangePicker', value: 'timeRangePicker', config: TimeRangePickerConfigProps }
+      ];
+
+      const panelMap = {
+        timePicker: <TimePicker {...changedProps} />,
+        timeRangePicker: <TimeRangePicker {...changedProps} />
+      };
+    `,
+    usageStr: `
+      useEffect(() => {
+        setRenderComp(panelMap[panel]);
+      }, [changedProps, panel]);
+    `,
+  },
   'tree-select': {
     importStr: `
       import configProps from './props.json';\n
@@ -593,26 +618,6 @@ module.exports = {
       useEffect(() => {
         setRenderComp(<Transfer {...defaultProps} {...changedProps} />);
       }, [changedProps]);
-    `,
-  },
-  'time-picker': {
-    importStr: `
-      import configProps from './props.json';\n
-      import { TimePicker } from 'tdesign-react';\n`,
-    configStr: `
-      const [configList, setConfigList] = useState(configProps);
-    `,
-    panelStr: `
-      const panelList = [{ label: 'timePicker', value: 'timePicker' }, { label: 'timeRangePicker', value: 'timeRangePicker' }];
-      const panelMap = {
-        timePicker: <TimePicker {...changedProps} />,
-        timeRangePicker: <TimePicker.TimeRangePicker {...changedProps} />
-      };
-    `,
-    usageStr: `
-      useEffect(() => {
-        setRenderComp(panelMap[panel]);
-      }, [changedProps, panel]);
     `,
   },
   upload: {
@@ -711,6 +716,16 @@ module.exports = {
       const panelList = [{ label: 'loading', value: 'loading' }];
     `,
     usageStr: `
+      const { fullscreen } = changedProps;
+      useEffect(() => {
+        if (fullscreen) {
+          setTimeout(() => {
+            onConfigChange({ detail: { name: 'fullscreen', value: false } });
+        }, 2000);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [fullscreen]);
+      
       useEffect(() => {
         setRenderComp(<Loading {...changedProps} />);
       }, [changedProps]);
@@ -1062,24 +1077,6 @@ module.exports = {
       }, [changedProps]);
     `,
   },
-  Jumper: {
-    importStr: `
-      import configProps from './props.json';\n
-      import { Jumper } from 'tdesign-react';\n`,
-    configStr: `
-      const [configList, setConfigList] = useState(configProps);
-    `,
-    panelStr: `
-      const panelList = [{ label: 'jumper', value: 'jumper' }];
-    `,
-    usageStr: `
-      useEffect(() => {
-        setRenderComp((
-          <Jumper {...changedProps}></Jumper>
-        ));
-      }, [changedProps]);
-    `,
-  },
   Collapse: {
     importStr: `
     import configProps from './props.json';\n
@@ -1112,5 +1109,47 @@ module.exports = {
       ));
     }, [changedProps]);
   `,
+  },
+  Descriptions: {
+    importStr: `
+    import configProps from './props.json';\n
+    import { Descriptions } from 'tdesign-react';\n`,
+    configStr: `
+    const [configList, setConfigList] = useState(configProps);
+  `,
+    panelStr: `
+    const panelList = [{ label: 'descriptions', value: 'descriptions' }];
+  `,
+    usageStr: `
+    const { DescriptionsItem } = Descriptions;
+    useEffect(() => {
+      setRenderComp((
+        <Descriptions title="Shipping address" {...changedProps}>
+        <DescriptionsItem label="Name">TDesign</DescriptionsItem>
+        <DescriptionsItem label="Telephone Number">139****0609</DescriptionsItem>
+        <DescriptionsItem label="Area">China Tencent Headquarters</DescriptionsItem>
+        <DescriptionsItem label="Address" content="test">
+          Shenzhen Penguin Island D1 4A Mail Center
+        </DescriptionsItem>
+      </Descriptions>
+      ));
+    }, [changedProps]);
+  `,
+  },
+  'range-input': {
+    importStr: `
+      import configProps from './props.json';\n
+      import { RangeInput } from 'tdesign-react';\n`,
+    configStr: `
+      const [configList, setConfigList] = useState(configProps);
+    `,
+    panelStr: `
+      const panelList = [{ label: 'rangeInput', value: 'rangeInput' }];
+    `,
+    usageStr: `
+      useEffect(() => {
+        setRenderComp(<RangeInput {...changedProps} />);
+      }, [changedProps]);
+    `,
   },
 };

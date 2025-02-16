@@ -2,15 +2,17 @@ import React, {
   useEffect,
   useMemo,
   KeyboardEvent,
+  WheelEvent,
   useRef,
   useCallback,
   Children,
   cloneElement,
   isValidElement,
+  useState,
 } from 'react';
 import classNames from 'classnames';
-import isFunction from 'lodash/isFunction';
-import get from 'lodash/get';
+import { isFunction , get , debounce } from 'lodash-es';
+import { getOffsetTopToContainer } from '../../_util/helper';
 import useControlled from '../../hooks/useControlled';
 import { useLocaleReceiver } from '../../locale/LocalReceiver';
 import useConfig from '../../hooks/useConfig';
@@ -24,7 +26,7 @@ import Option from './Option';
 import OptionGroup from './OptionGroup';
 import PopupContent from './PopupContent';
 import Tag from '../../tag';
-import { TdSelectProps, TdOptionProps, SelectOption, SelectValueChangeTrigger } from '../type';
+import { TdSelectProps, TdOptionProps, SelectOption, SelectValueChangeTrigger, SelectValue } from '../type';
 import { StyledProps } from '../../common';
 import { selectDefaultProps } from '../defaultProps';
 import { PopupVisibleChangeContext } from '../../popup';
@@ -54,7 +56,6 @@ const Select = forwardRefWithStatics(
       borderless,
       autoWidth,
       creatable,
-      filter,
       loadingText = emptyText,
       max,
       popupProps,
@@ -70,12 +71,6 @@ const Select = forwardRefWithStatics(
       options,
       filterable,
       loading,
-      onFocus,
-      onBlur,
-      onClear = noop,
-      onCreate,
-      onRemove,
-      onSearch,
       empty,
       valueType,
       keys,
@@ -83,7 +78,6 @@ const Select = forwardRefWithStatics(
       collapsedItems,
       minCollapsedNum,
       valueDisplay,
-      onEnter,
       showArrow,
       inputProps,
       panelBottomContent,
@@ -93,13 +87,23 @@ const Select = forwardRefWithStatics(
       tagProps,
       scroll,
       suffixIcon,
+      label,
+      filter,
+      onFocus,
+      onBlur,
+      onClear = noop,
+      onCreate,
+      onRemove,
+      onSearch,
+      onEnter,
       onPopupVisibleChange,
     } = props;
 
     const [value, onChange] = useControlled(props, 'value', props.onChange);
     const selectInputRef = useRef(null);
     const { classPrefix } = useConfig();
-    const { overlayClassName, ...restPopupProps } = popupProps || {};
+    const { overlayClassName, onScroll, onScrollToBottom, ...restPopupProps } = popupProps || {};
+    const [isScrolling, toggleIsScrolling] = useState(false);
 
     const name = `${classPrefix}-select`; // t-select
 
@@ -112,6 +116,7 @@ const Select = forwardRefWithStatics(
       children,
       valueType,
       value,
+      reserveKeyword,
     );
 
     const selectedLabel = useMemo(() => {
@@ -123,8 +128,9 @@ const Select = forwardRefWithStatics(
 
     const handleShowPopup = (visible: boolean, ctx: PopupVisibleChangeContext) => {
       if (disabled) return;
-      setShowPopup(visible, ctx);
+      visible && toggleIsScrolling(false);
       !visible && onInputChange('', { trigger: 'blur' });
+      setShowPopup(visible, ctx);
     };
 
     // 可以根据触发来源，自由定制标签变化时的筛选器行为
@@ -149,7 +155,7 @@ const Select = forwardRefWithStatics(
         const values = getSelectValueArr(value, value[closest], true, valueType, keys);
 
         // 处理onChange回调中的selectedOptions参数
-        const currentSelectedOptions = getSelectedOptions(values, multiple, valueType, keys, tmpPropOptions);
+        const { currentSelectedOptions } = getSelectedOptions(values, multiple, valueType, keys, tmpPropOptions);
         onChange(values, { e, trigger, selectedOptions: currentSelectedOptions });
         return;
       }
@@ -161,10 +167,10 @@ const Select = forwardRefWithStatics(
       }
 
       if (trigger === 'tag-remove') {
-        e.stopPropagation();
+        e?.stopPropagation?.();
         const values = getSelectValueArr(value, value[index], true, valueType, keys);
         // 处理onChange回调中的selectedOptions参数
-        const currentSelectedOptions = getSelectedOptions(values, multiple, valueType, keys, tmpPropOptions);
+        const { currentSelectedOptions } = getSelectedOptions(values, multiple, valueType, keys, tmpPropOptions);
 
         onChange(values, { e, trigger, selectedOptions: currentSelectedOptions });
         if (isFunction(onRemove)) {
@@ -183,19 +189,33 @@ const Select = forwardRefWithStatics(
       if (!multiple) {
         return;
       }
-      const selectableOptions = currentOptions
+
+      const values = currentOptions
         .filter((option) => !option.checkAll && !option.disabled)
-        .map((option) => option.value);
+        .map((option) => (valueType === 'object' ? option : option[keys?.value || 'value']));
+
+      const { currentSelectedOptions, allSelectedValue } = getSelectedOptions(
+        values,
+        multiple,
+        valueType,
+        keys,
+        tmpPropOptions,
+      );
 
       const checkAllValue =
-        !checkAll && selectableOptions.length !== (props.value as Array<SelectOption>)?.length ? selectableOptions : [];
-      onChange?.(checkAllValue, { e, trigger: checkAll ? 'check' : 'uncheck', selectedOptions: checkAllValue });
+        !checkAll && allSelectedValue.length !== (props.value as Array<SelectOption>)?.length ? allSelectedValue : [];
+
+      onChange?.(checkAllValue, {
+        e,
+        trigger: checkAll ? 'check' : 'uncheck',
+        selectedOptions: currentSelectedOptions,
+      });
     };
 
     // 选中 Popup 某项
     const handleChange = (
       value: string | number | Array<string | number | Record<string, string | number>>,
-      context: { e: React.MouseEvent<HTMLLIElement>; trigger: SelectValueChangeTrigger },
+      context: { e: React.MouseEvent<HTMLLIElement>; trigger: SelectValueChangeTrigger; value?: SelectValue },
     ) => {
       if (multiple) {
         !reserveKeyword && inputValue && onInputChange('', { e: context.e, trigger: 'change' });
@@ -206,9 +226,22 @@ const Select = forwardRefWithStatics(
         }
       }
       // 处理onChange回调中的selectedOptions参数
-      const currentSelectedOptions = getSelectedOptions(value, multiple, valueType, keys, tmpPropOptions);
+      const selectedValue = multiple ? context.value : value;
+      const { currentSelectedOptions, currentOption } = getSelectedOptions(
+        value,
+        multiple,
+        valueType,
+        keys,
+        tmpPropOptions,
+        selectedValue,
+      );
 
-      onChange?.(value, { ...context, selectedOptions: currentSelectedOptions });
+      onChange?.(value, {
+        e: context.e,
+        trigger: context.trigger,
+        selectedOptions: currentSelectedOptions,
+        option: currentOption,
+      });
     };
 
     // 处理filter逻辑
@@ -217,7 +250,6 @@ const Select = forwardRefWithStatics(
       if (filterable && isFunction(onSearch)) {
         return;
       }
-
       if (!value) {
         setCurrentOptions(tmpPropOptions);
         return;
@@ -270,7 +302,7 @@ const Select = forwardRefWithStatics(
         handleFilter(String(inputValue));
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [inputValue]);
+    }, [inputValue, tmpPropOptions]);
 
     // 渲染后置图标
     const renderSuffixIcon = () => {
@@ -342,9 +374,26 @@ const Select = forwardRefWithStatics(
                   e.stopPropagation();
                   const values = getSelectValueArr(value, value[key], true, valueType, keys);
 
-                  const selectedOptions = getSelectedOptions(values, multiple, valueType, keys, tmpPropOptions);
-                  onChange(values, { e, selectedOptions, trigger: 'uncheck' });
+                  const { currentSelectedOptions } = getSelectedOptions(
+                    values,
+                    multiple,
+                    valueType,
+                    keys,
+                    tmpPropOptions,
+                    value,
+                  );
+                  onChange(values, {
+                    e,
+                    selectedOptions: currentSelectedOptions,
+                    trigger: 'uncheck',
+                  });
                   tagProps?.onClose?.({ e });
+
+                  onRemove?.({
+                    value: value[key],
+                    data: { label: v, value: value[key] },
+                    e: e as unknown as React.MouseEvent<HTMLDivElement, MouseEvent>,
+                  });
                 }}
               >
                 {v}
@@ -356,41 +405,33 @@ const Select = forwardRefWithStatics(
         return valueDisplay;
       }
       if (multiple) {
-        return ({ onClose }) => parseContentTNode(valueDisplay, { value: selectedLabel, onClose });
+        return ({ onClose }) => parseContentTNode(valueDisplay, { value: selectedOptions, onClose });
       }
       return parseContentTNode(valueDisplay, { value: selectedLabel, onClose: noop });
     };
 
-    const renderCollapsedItems = useMemo(
-      () =>
-        collapsedItems
-          ? parseContentTNode(collapsedItems, {
-              value: selectedLabel,
-              collapsedSelectedItems: selectedLabel.slice(minCollapsedNum, selectedLabel.length),
-              count: selectedLabel.length - minCollapsedNum,
-            })
-          : null,
-      [selectedLabel, collapsedItems, minCollapsedNum],
-    );
-
     // 将第一个选中的 option 置于列表可见范围的最后一位
     const updateScrollTop = (content: HTMLDivElement) => {
-      if (!content) {
+      if (!content || isScrolling) {
         return;
       }
       const firstSelectedNode: HTMLDivElement = content.querySelector(`.${classPrefix}-is-selected`);
-      if (firstSelectedNode) {
+      if (!multiple && firstSelectedNode) {
         const { paddingBottom } = getComputedStyle(firstSelectedNode);
         const { marginBottom } = getComputedStyle(content);
         const elementBottomHeight = parseInt(paddingBottom, 10) + parseInt(marginBottom, 10);
         // 小于0时不需要特殊处理，会被设为0
         const updateValue =
-          firstSelectedNode.offsetTop -
+          getOffsetTopToContainer(firstSelectedNode, content) -
           content.offsetTop -
           (content.clientHeight - firstSelectedNode.clientHeight) +
           elementBottomHeight;
-        // eslint-disable-next-line no-param-reassign
-        content.scrollTop = updateValue;
+
+        // 通过 setTimeout 确保组件渲染完成后再设置 scrollTop
+        setTimeout(() => {
+          // eslint-disable-next-line no-param-reassign
+          content.scrollTop = updateValue;
+        });
       }
     };
 
@@ -398,6 +439,20 @@ const Select = forwardRefWithStatics(
 
     const handleEnter = (_, context: { inputValue: string; e: KeyboardEvent<HTMLDivElement> }) => {
       onEnter?.({ ...context, value });
+    };
+
+    const handleScroll = ({ e }: { e: WheelEvent<HTMLDivElement> }) => {
+      toggleIsScrolling(true);
+
+      onScroll?.({ e });
+      if (onScrollToBottom) {
+        const debounceOnScrollBottom = debounce((e) => onScrollToBottom({ e }), 100);
+
+        const { scrollTop, clientHeight, scrollHeight } = e.target as HTMLDivElement;
+        if (clientHeight + Math.floor(scrollTop) === scrollHeight) {
+          debounceOnScrollBottom(e);
+        }
+      }
     };
     return (
       <div
@@ -415,14 +470,16 @@ const Select = forwardRefWithStatics(
           allowInput={(filterable ?? local.filterable) || isFunction(filter)}
           multiple={multiple}
           value={selectedLabel}
+          options={selectedOptions}
           valueDisplay={renderValueDisplay()}
           clearable={clearable}
           disabled={disabled}
           status={props.status}
           tips={props.tips}
           borderless={borderless}
-          label={prefixIcon}
+          label={label}
           suffix={props.suffix}
+          prefixIcon={prefixIcon}
           suffixIcon={renderSuffixIcon()}
           panel={renderContent()}
           placeholder={!multiple && showPopup && selectedLabel ? selectedLabel : placeholder || t(local.placeholder)}
@@ -437,10 +494,11 @@ const Select = forwardRefWithStatics(
             ...inputProps,
           }}
           minCollapsedNum={minCollapsedNum}
-          collapsedItems={renderCollapsedItems}
+          collapsedItems={collapsedItems}
           updateScrollTop={updateScrollTop}
           popupProps={{
             overlayClassName: [`${name}__dropdown`, overlayClassName],
+            onScroll: handleScroll,
             ...restPopupProps,
           }}
           popupVisible={showPopup}

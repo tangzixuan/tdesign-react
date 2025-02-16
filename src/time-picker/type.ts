@@ -18,6 +18,11 @@ export interface TdTimePickerProps {
    */
   allowInput?: boolean;
   /**
+   * 无边框模式
+   * @default false
+   */
+  borderless?: boolean;
+  /**
    * 是否允许清除选中值
    * @default false
    */
@@ -49,6 +54,10 @@ export interface TdTimePickerProps {
    * 透传给输入框（Input）组件的参数
    */
   inputProps?: InputProps;
+  /**
+   * 左侧文本
+   */
+  label?: TNode;
   /**
    * 占位符
    */
@@ -127,6 +136,16 @@ export interface TdTimeRangePickerProps {
    */
   allowInput?: boolean;
   /**
+   * 是否自动调换左右区间的顺序，默认为 true；若需要支持跨天的场景，可以设置为 false
+   * @default true
+   */
+  autoSwap?: boolean;
+  /**
+   * 无边框模式
+   * @default false
+   */
+  borderless?: boolean;
+  /**
    * 是否允许清除选中值
    * @default false
    */
@@ -155,6 +174,10 @@ export interface TdTimeRangePickerProps {
    * @default true
    */
   hideDisabledTime?: boolean;
+  /**
+   * 左侧文本
+   */
+  label?: TNode;
   /**
    * 占位符，值为数组表示可分别为开始日期和结束日期设置占位符
    */

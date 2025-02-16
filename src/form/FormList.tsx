@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
-import merge from 'lodash/merge';
-import get from 'lodash/get';
+import { merge , get } from 'lodash-es';
 import { FormListContext, useFormContext } from './FormContext';
 import { FormItemInstance } from './FormItem';
 import { HOOK_MARK } from './hooks/useForm';
@@ -37,7 +36,7 @@ const FormList: React.FC<TdFormListProps> = (props) => {
   const snakeName = []
     .concat(name)
     .filter((item) => item !== undefined)
-    .join('_'); // 转化 name
+    .toString(); // 转化 name
 
   const isMounted = useRef(false);
 
@@ -119,7 +118,7 @@ const FormList: React.FC<TdFormListProps> = (props) => {
       formMapRef.current.delete(name);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
+  }, [snakeName]);
 
   useEffect(() => {
     [...formListMapRef.current.values()].forEach((formItemRef) => {
@@ -145,7 +144,8 @@ const FormList: React.FC<TdFormListProps> = (props) => {
     Promise.resolve().then(() => {
       if (!fieldsTaskQueueRef.current.length) return;
 
-      const currentQueue = fieldsTaskQueueRef.current[0];
+      // fix multiple formlist stuck
+      const currentQueue = fieldsTaskQueueRef.current.pop();
       const { fieldData, callback, originData } = currentQueue;
 
       [...formListMapRef.current.values()].forEach((formItemRef) => {
@@ -155,7 +155,6 @@ const FormList: React.FC<TdFormListProps> = (props) => {
         const data = get(fieldData, itemName);
         callback(formItemRef, data);
       });
-      fieldsTaskQueueRef.current.pop();
 
       // formList 嵌套 formList
       if (!formMapRef || !formMapRef.current) return;
@@ -168,7 +167,8 @@ const FormList: React.FC<TdFormListProps> = (props) => {
         if (data) callback(formItemRef, data);
       });
     });
-  }, [form, name, fields, formMapRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, snakeName, fields, formMapRef]);
 
   useImperativeHandle(
     formListRef,

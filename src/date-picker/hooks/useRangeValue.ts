@@ -7,8 +7,8 @@ import {
   formatTime,
   getDefaultFormat,
   initYearMonthTime,
+  extractTimeFormat,
 } from '../../_common/js/date-picker/format';
-import { extractTimeFormat } from '../../_common/js/date-picker/utils';
 import log from '../../_common/js/log';
 
 export const PARTIAL_MAP = { first: 'start', second: 'end' };
@@ -39,13 +39,13 @@ export default function useRange(props: TdDateRangePickerProps) {
 
   const [isFirstValueSelected, setIsFirstValueSelected] = useState(false); // 记录面板点击次数，两次后才自动关闭
   const [time, setTime] = useState(
-    initYearMonthTime({ value, mode: props.mode, format, enableTimePicker: props.enableTimePicker }).time,
+    () => initYearMonthTime({ value, mode: props.mode, format, enableTimePicker: props.enableTimePicker }).time,
   );
   const [month, setMonth] = useState<Array<number>>(
-    initYearMonthTime({ value, mode: props.mode, format, enableTimePicker: props.enableTimePicker }).month,
+    () => initYearMonthTime({ value, mode: props.mode, format, enableTimePicker: props.enableTimePicker }).month,
   );
-  const [year, setYear] = useState<Array<number>>(initYearMonthTime({ value, mode: props.mode, format }).year);
-  const [cacheValue, setCacheValue] = useState(formatDate(value, { format })); // 缓存选中值，panel 点击时更改
+  const [year, setYear] = useState<Array<number>>(() => initYearMonthTime({ value, mode: props.mode, format }).year);
+  const [cacheValue, setCacheValue] = useState(() => formatDate(value, { format })); // 缓存选中值，panel 点击时更改
 
   // 输入框响应 value 变化
   useEffect(() => {

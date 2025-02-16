@@ -52,6 +52,11 @@ export interface TdDrawerProps {
    */
   footer?: TNode;
   /**
+   * 是否强制渲染Drawer
+   * @default false
+   */
+  forceRender?: boolean;
+  /**
    * 头部内容。值为 true 显示空白头部，值为 false 不显示头部，值类型为 string 则直接显示值，值类型为 TNode 表示自定义头部内容
    * @default true
    */
@@ -86,10 +91,10 @@ export interface TdDrawerProps {
    */
   size?: string;
   /**
-   * 抽屉大小可拖拽调整，横向抽屉调整宽度，纵向抽屉调整高度
+   * 抽屉大小可拖拽调整，横向抽屉调整宽度
    * @default false
    */
-  sizeDraggable?: boolean;
+  sizeDraggable?: boolean | SizeDragLimit;
   /**
    * 组件是否可见
    * @default false
@@ -99,6 +104,14 @@ export interface TdDrawerProps {
    * 抽屉层级，样式默认为 1500
    */
   zIndex?: number;
+  /**
+   * 对话框执行消失动画效果前触发
+   */
+  onBeforeClose?: () => void;
+  /**
+   * 对话框执行弹出动画效果前触发
+   */
+  onBeforeOpen?: () => void;
   /**
    * 如果“取消”按钮存在，点击“取消”按钮时触发，同时触发关闭事件
    */
@@ -123,6 +136,10 @@ export interface TdDrawerProps {
    * 如果蒙层存在，点击蒙层时触发
    */
   onOverlayClick?: (context: { e: MouseEvent<HTMLDivElement> }) => void;
+  /**
+   * 抽屉大小调整结束事件
+   */
+  onSizeDragEnd?: (context: { e: globalThis.MouseEvent; size: number }) => void;
 }
 
 export interface DrawerOptions extends Omit<TdDrawerProps, 'attach'> {
@@ -162,6 +179,11 @@ export interface DrawerInstance {
 }
 
 export type FooterButton = string | ButtonProps | TNode;
+
+export interface SizeDragLimit {
+  max: number;
+  min: number;
+}
 
 export type DrawerEventSource = 'esc' | 'close-btn' | 'cancel' | 'overlay';
 

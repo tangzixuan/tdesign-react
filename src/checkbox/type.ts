@@ -51,6 +51,11 @@ export interface TdCheckboxProps {
    */
   readonly?: boolean;
   /**
+   * HTML 原生属性
+   * @default ''
+   */
+  title?: string;
+  /**
    * 多选框的值
    */
   value?: string | number | boolean;
@@ -59,7 +64,7 @@ export interface TdCheckboxProps {
    */
   onChange?: (checked: boolean, context: { e: ChangeEvent<HTMLInputElement> }) => void;
   /**
-   * 点击时出发，一般用于外层阻止冒泡场景
+   * 点击时触发，一般用于外层阻止冒泡场景
    */
   onClick?: (context: { e: MouseEvent<HTMLLabelElement> }) => void;
 }
@@ -113,5 +118,6 @@ export type CheckboxGroupValue = Array<string | number | boolean>;
 export interface CheckboxGroupChangeContext {
   e: ChangeEvent<HTMLDivElement>;
   current: CheckboxOption | TdCheckboxProps;
+  option: CheckboxOption | TdCheckboxProps;
   type: 'check' | 'uncheck';
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, MouseEvent, useEffect, MutableRefObject } from 'react';
-import get from 'lodash/get';
+import { get } from 'lodash-es';
 import classnames from 'classnames';
 import { formatRowAttributes, formatRowClassNames } from './utils';
 import { getRowFixedStyles } from './hooks/useFixed';
@@ -97,7 +97,7 @@ export default function TR(props: TrProps) {
   );
 
   const classes = useMemo(() => {
-    const customClasses = formatRowClassNames(rowClassName, { row, rowIndex, type: 'body' }, rowKey || 'id');
+    const customClasses = formatRowClassNames(rowClassName, { row, rowIndex, rowKey, type: 'body' }, rowKey || 'id');
     return [trStyles?.classes, customClasses];
   }, [row, rowClassName, rowIndex, rowKey, trStyles?.classes]);
 

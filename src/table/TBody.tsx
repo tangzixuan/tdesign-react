@@ -1,7 +1,5 @@
-import React, { MutableRefObject, useMemo } from 'react';
-import camelCase from 'lodash/camelCase';
-import get from 'lodash/get';
-import pick from 'lodash/pick';
+import React, { CSSProperties, MutableRefObject, ReactNode, useMemo } from 'react';
+import { camelCase , get , pick } from 'lodash-es';
 import classNames from 'classnames';
 import TR, { ROW_LISTENERS, TABLE_PROPS } from './TR';
 import { useLocaleReceiver } from '../locale/LocalReceiver';
@@ -74,7 +72,7 @@ export default function TBody(props: TableBodyProps) {
       <td colSpan={columns.length}>
         <div
           className={classNames([tableBaseClass.empty, { [tableFullRowClasses.innerFullRow]: props.isWidthOverflow }])}
-          style={props.isWidthOverflow ? { width: `${props.tableWidth}px` } : {}}
+          style={props.isWidthOverflow ? { width: `${props.tableWidth.current}px` } : {}}
         >
           {props.empty || t(global.empty)}
         </div>
@@ -98,7 +96,7 @@ export default function TBody(props: TableBodyProps) {
         <td colSpan={columnLength}>
           <div
             className={classNames({ [tableFullRowClasses.innerFullRow]: isFixedToLeft })}
-            style={isFixedToLeft ? { width: `${props.tableWidth}px` } : {}}
+            style={isFixedToLeft ? { width: `${props.tableWidth.current}px` } : {}}
           >
             <div className={tableFullRowClasses.innerFullElement}>{fullRowNode}</div>
           </div>
@@ -123,7 +121,7 @@ export default function TBody(props: TableBodyProps) {
 
   const getTRNodeList = () => {
     if (isSkipSnapsMapNotFinish) return null;
-    const trNodeList = [];
+    const trNodeList: ReactNode[] = [];
     const properties = [
       'classPrefix',
       'ellipsisOverlayClassName',
@@ -168,7 +166,7 @@ export default function TBody(props: TableBodyProps) {
           row,
           index: rowIndex,
           columns,
-          tableWidth: props.tableWidth,
+          tableWidth: props.tableWidth.current,
           isWidthOverflow: props.isWidthOverflow,
         };
         const expandedContent = props.renderExpandedRow(p);
@@ -182,13 +180,13 @@ export default function TBody(props: TableBodyProps) {
 
   // 垫上隐藏的 tr 元素高度
   const translate = `translateY(${virtualConfig.translateY}px)`;
-  const posStyle = virtualConfig.isVirtualScroll
-    ? {
+  const posStyle: CSSProperties = virtualConfig.isVirtualScroll
+    ? ({
         transform: translate,
         msTransform: translate,
         MozTransform: translate,
         WebkitTransform: translate,
-      }
+      } as CSSProperties)
     : undefined;
 
   const list = (

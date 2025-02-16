@@ -1,6 +1,4 @@
-import isFunction from 'lodash/isFunction';
-import get from 'lodash/get';
-import isObject from 'lodash/isObject';
+import { isFunction , get , isObject } from 'lodash-es';
 import {
   BaseTableCellParams,
   CellData,
@@ -85,7 +83,7 @@ export function formatClassNames(
   for (let i = 0, len = classes.length; i < len; i++) {
     const cls = classes[i];
     if (isFunction(cls)) {
-      arr.push(cls(params));
+      arr.push(cls(params as CellData<TableRowData>));
     } else {
       arr.push(cls);
     }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import get from 'lodash/get';
+import { get } from 'lodash-es';
 import log from '../../_common/js/log';
 import { BaseTableCellParams, BaseTableCol, TableRowData, TableRowspanAndColspanFunc } from '../type';
 
@@ -23,7 +23,7 @@ export default function useRowspanAndColspan(
   rowKey: string,
   rowspanAndColspan: TableRowspanAndColspanFunc<TableRowData>,
 ) {
-  const [skipSpansMap, setKipSnapsMap] = useState(new Map<string, SkipSpansValue>());
+  const [skipSpansMap, setKipSnapsMap] = useState(() => new Map<string, SkipSpansValue>());
 
   // 计算单元格是否跳过渲染
   const onTrRowspanOrColspan = (

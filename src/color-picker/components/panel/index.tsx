@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, forwardRef, useCallback } from 'react';
 import classNames from 'classnames';
 import tinyColor from 'tinycolor2';
-import useCommonClassName from '../../../_util/useCommonClassName';
+import useCommonClassName from '../../../hooks/useCommonClassName';
 import useControlled from '../../../hooks/useControlled';
 import { useLocaleReceiver } from '../../../locale/LocalReceiver';
 import useClassName from '../../hooks/useClassNames';
@@ -13,7 +13,7 @@ import {
   DEFAULT_LINEAR_GRADIENT,
   TD_COLOR_USED_COLORS_MAX_SIZE,
   DEFAULT_SYSTEM_SWATCH_COLORS,
-} from '../../const';
+} from '../../../_common/js/color-picker/constants';
 import { ColorPickerProps, TdColorModes, TdColorSaturationData } from '../../interface';
 import { ColorPickerChangeTrigger, TdColorPickerProps } from '../../type';
 import { colorPickerDefaultProps } from '../../defaultProps';
@@ -47,7 +47,7 @@ const Panel = forwardRef<HTMLDivElement, ColorPickerProps>((props, ref) => {
     onRecentColorsChange,
   } = props;
   const [innerValue, setInnerValue] = useControlled(props, 'value', onChange);
-  const [mode, setMode] = useState<TdColorModes>(colorModes?.length === 1 ? colorModes[0] : 'monochrome');
+  const [mode, setMode] = useState<TdColorModes>(() => (colorModes?.length === 1 ? colorModes[0] : 'monochrome'));
   const [updateId, setUpdateId] = useState(0);
 
   const isGradient = mode === 'linear-gradient'; // 判断是否为 linear-gradient 模式
@@ -56,7 +56,6 @@ const Panel = forwardRef<HTMLDivElement, ColorPickerProps>((props, ref) => {
   const [recentlyUsedColors, setRecentlyUsedColors] = useControlled(props, 'recentColors', onRecentColorsChange, {
     defaultRecentColors: colorPickerDefaultProps.recentColors,
   });
-
   const colorInstanceRef = useRef<Color>(new Color(innerValue || defaultEmptyColor));
   const getModeByColor = colorInstanceRef.current.isGradient ? 'linear-gradient' : 'monochrome';
   const formatRef = useRef<TdColorPickerProps['format']>(colorInstanceRef.current.isGradient ? 'CSS' : format ?? 'RGB');
@@ -80,12 +79,14 @@ const Panel = forwardRef<HTMLDivElement, ColorPickerProps>((props, ref) => {
 
   const emitColorChange = useCallback(
     (trigger?: ColorPickerChangeTrigger) => {
-      setInnerValue(formatValue(), {
+      const value = formatValue();
+      setInnerValue(value, {
         color: getColorObject(colorInstanceRef.current),
         trigger: trigger || 'palette-saturation-brightness',
       });
+      update(value);
     },
-    [formatValue, setInnerValue],
+    [formatValue, setInnerValue, update],
   );
 
   useEffect(() => {
@@ -225,14 +226,20 @@ const Panel = forwardRef<HTMLDivElement, ColorPickerProps>((props, ref) => {
   };
 
   // format选择格式变化
-  const handleFormatModeChange = (format: TdColorPickerProps['format']) => (formatRef.current = format);
+  const handleFormatModeChange = useCallback(
+    (format: TdColorPickerProps['format']) => (formatRef.current = format),
+    [],
+  );
 
   // format输入变化
-  const handleInputChange = (input: string, alpha?: number) => {
-    update(input);
-    colorInstanceRef.current.alpha = alpha;
-    emitColorChange('input');
-  };
+  const handleInputChange = useCallback(
+    (input: string, alpha?: number) => {
+      update(input);
+      colorInstanceRef.current.alpha = alpha;
+      emitColorChange('input');
+    },
+    [emitColorChange, update],
+  );
 
   // 渲染预设颜色区域
   const SwatchesArea = React.memo(() => {

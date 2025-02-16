@@ -8,6 +8,7 @@ import noop from '../_util/noop';
 import { checkTagDefaultProps } from './defaultProps';
 import Tag from './Tag';
 import { ENTER_REG, SPACE_REG } from '../_common/js/common';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 /**
  * CheckTag 组件支持的属性
@@ -19,7 +20,8 @@ export interface CheckTagProps extends TdCheckTagProps, StyledProps {
   children?: React.ReactNode;
 }
 
-const CheckTag = forwardRef((props: CheckTagProps, ref: React.Ref<HTMLDivElement>) => {
+const CheckTag = forwardRef<HTMLDivElement, CheckTagProps>((originalProps, ref) => {
+  const props = useDefaultProps<CheckTagProps>(originalProps, checkTagDefaultProps);
   const {
     value,
     content,
@@ -30,6 +32,7 @@ const CheckTag = forwardRef((props: CheckTagProps, ref: React.Ref<HTMLDivElement
     checkedProps,
     uncheckedProps,
     onChange,
+    className,
     ...tagOtherProps
   } = props;
   const [innerChecked, setInnerChecked] = useControlled(props, 'checked', onChange);
@@ -37,7 +40,8 @@ const CheckTag = forwardRef((props: CheckTagProps, ref: React.Ref<HTMLDivElement
   const { classPrefix } = useConfig();
   const tagClassPrefix = `${classPrefix}-tag`;
 
-  const tagClass = useMemo(() => [
+  const tagClass = useMemo(
+    () => [
       `${tagClassPrefix}`,
       `${tagClassPrefix}--check`,
       {
@@ -46,7 +50,10 @@ const CheckTag = forwardRef((props: CheckTagProps, ref: React.Ref<HTMLDivElement
         [`${classPrefix}-size-s`]: size === 'small',
         [`${classPrefix}-size-l`]: size === 'large',
       },
-    ], [innerChecked, disabled, classPrefix, tagClassPrefix, size]);
+      className,
+    ],
+    [innerChecked, disabled, classPrefix, tagClassPrefix, size, className],
+  );
 
   const checkTagProps = useMemo(() => {
     const tmpCheckedProps: TdTagProps = { theme: 'primary', ...checkedProps };
@@ -96,6 +103,5 @@ const CheckTag = forwardRef((props: CheckTagProps, ref: React.Ref<HTMLDivElement
 });
 
 CheckTag.displayName = 'CheckTag';
-CheckTag.defaultProps = checkTagDefaultProps;
 
 export default CheckTag;

@@ -6,7 +6,7 @@ import Radio from '../radio';
 import CheckTag from '../tag/CheckTag';
 import noop from '../_util/noop';
 import usePrefixClass from './hooks/usePrefixClass';
-import useLayoutEffect from '../_util/useLayoutEffect';
+import useLayoutEffect from '../hooks/useLayoutEffect';
 import { useLocaleReceiver } from '../locale/LocalReceiver';
 import { TdCalendarProps, ControllerOptions, CalendarCell, CalendarValue, CalendarController } from './type';
 import { StyledProps } from '../common';
@@ -121,9 +121,9 @@ const Calendar = forwardRef<CalendarMethods, CalendarProps>((props, ref) => {
   const { visible: visibleForCurrent = true, currentDayButtonProps = {}, currentMonthButtonProps = {} } = current;
 
   const [mode, setMode] = useState<string>('month');
-  const [value, setValue] = useState<dayjs.Dayjs>(dayjs(valueFromProps || dayjs().format('YYYY-MM-DD')));
-  const [year, setYear] = useState<number>(yearProps ? Number(yearProps) : value.year());
-  const [month, setMonth] = useState<number>(monthProps ? Number(monthProps) : parseInt(value.format('M'), 10));
+  const [value, setValue] = useState<dayjs.Dayjs>(() => dayjs(valueFromProps || dayjs().format('YYYY-MM-DD')));
+  const [year, setYear] = useState<number>(() => (yearProps ? Number(yearProps) : value.year()));
+  const [month, setMonth] = useState<number>(() => (monthProps ? Number(monthProps) : parseInt(value.format('M'), 10)));
   const [isShowWeekend, setIsShowWeekend] = useState<boolean>(isShowWeekendDefault);
 
   const [local, t] = useLocaleReceiver('calendar');

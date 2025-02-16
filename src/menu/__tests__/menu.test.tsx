@@ -1,5 +1,6 @@
 import { render, fireEvent, vi, waitFor } from '@test/utils';
 import React from 'react';
+import { UserIcon } from 'tdesign-icons-react';
 import Menu from '../index';
 
 describe('Menu 组件测试', () => {
@@ -94,13 +95,17 @@ describe('Menu 组件测试', () => {
         </SubMenu>
         <SubMenu value="sub-1" title="菜单2">
           <MenuItem value="3">子菜单3</MenuItem>
-          <MenuItem value="4">子菜单4</MenuItem>
+          <MenuItem value="4" className="menu-item-class">
+            子菜单4
+          </MenuItem>
         </SubMenu>
       </HeadMenu>,
     );
     expect(container.querySelector('.t-menu--dark')).toBeInTheDocument();
     expect(queryByText('我是operations')).toBeInTheDocument();
     expect(queryByText('菜单1')).toBeInTheDocument();
+
+    expect(container.querySelector('.t-tabs__nav-item.menu-item-class')).toBeInTheDocument();
 
     const element1 = await waitFor(() => container.querySelector('t-head-menu__submenu'));
     expect(element1).toBeNull();
@@ -187,5 +192,20 @@ describe('Menu 组件测试', () => {
     );
     fireEvent.click(getByText('仪表盘'));
     expect(clickFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('menu head-menu render icon', async () => {
+    const { container, getByText } = render(
+      <HeadMenu>
+        <SubMenu value="sub-2" title="水果蔬菜" icon={<UserIcon />}>
+          <MenuItem value="5">
+            <span>苹果</span>
+          </MenuItem>
+        </SubMenu>
+      </HeadMenu>,
+    );
+
+    expect(getByText('水果蔬菜')).toBeInTheDocument();
+    expect(container.querySelector('.t-icon-user')).toBeInTheDocument();
   });
 });

@@ -1,8 +1,6 @@
 import React, { forwardRef, isValidElement } from 'react';
 import classNames from 'classnames';
-import isString from 'lodash/isString';
-import isObject from 'lodash/isObject';
-import isFunction from 'lodash/isFunction';
+import { isString , isObject , isFunction } from 'lodash-es';
 import {
   CloseIcon as TdCloseIcon,
   InfoCircleFilledIcon as TdInfoCircleFilledIcon,
@@ -63,14 +61,11 @@ const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>((props, ref) => {
     onCloseBtnClick,
     cancelBtn = cancelText,
     confirmBtn = confirmText,
+    confirmLoading,
     ...otherProps
   } = useDefaultProps<DialogCardProps>(props, dialogCardDefaultProps);
 
-  const renderHeader = () => {
-    if (!header) {
-      return null;
-    }
-
+  const renderHeaderContent = () => {
     const iconMap = {
       info: <InfoCircleFilledIcon className={`${classPrefix}-is-info`} />,
       warning: <InfoCircleFilledIcon className={`${classPrefix}-is-warning`} />,
@@ -108,11 +103,14 @@ const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>((props, ref) => {
     );
   };
 
-  const renderFooter = () => {
-    if (footer === false || footer === null) {
-      return null;
-    }
+  const renderHeader = () => (
+    <div className={classNames(`${componentCls}__header`)}>
+      {renderHeaderContent()}
+      {renderCloseBtn()}
+    </div>
+  );
 
+  const renderFooter = () => {
     const defaultFooter = () => {
       const renderCancelBtn = renderDialogButton(cancelBtn, {
         variant: 'outline',
@@ -120,6 +118,7 @@ const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>((props, ref) => {
       });
       const renderConfirmBtn = renderDialogButton(confirmBtn, {
         theme: 'primary',
+        loading: confirmLoading,
         onClick: (e: React.MouseEvent<HTMLButtonElement>) => onConfirm?.({ e }),
       });
 
@@ -136,12 +135,9 @@ const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>((props, ref) => {
 
   return (
     <div ref={ref} {...otherProps} className={classNames(componentCls, `${componentCls}--default`, className)}>
-      <div className={classNames(`${componentCls}__header`)}>
-        {renderHeader()}
-        {renderCloseBtn()}
-      </div>
+      {!!header && renderHeader()}
       <div className={`${componentCls}__body`}>{body || children}</div>
-      {renderFooter()}
+      {!!footer && renderFooter()}
     </div>
   );
 });

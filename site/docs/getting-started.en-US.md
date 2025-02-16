@@ -19,6 +19,8 @@ npm i tdesign-react
 <script src="https://unpkg.com/tdesign-react/dist/tdesign.min.js"></script>
 ```
 
+> Please note that unpkg usage is not recommended as it will download the entire component library. Production projects will be directly affected by version updates, and may also be affected by the stability of the CDN.
+
 The package of tdesign-react provides kinds of bundles, read [the documentation](https://github.com/Tencent/tdesign/blob/main/docs/develop-install.md) for the detail of differences between bundles.
 
 ### Usage
@@ -91,6 +93,8 @@ module.exports = {
 When using Next.js, you need to adjust how you use these components.
 
 ```js
+'use client'
+
 import { Button } from 'tdesign-react/lib/';
 import 'tdesign-react/dist/tdesign.css';
 ```

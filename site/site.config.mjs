@@ -97,6 +97,14 @@ export const docs = [
         component: () => import('tdesign-react/link/link.md'),
         componentEn: () => import('tdesign-react/link/link.en-US.md'),
       },
+      {
+        title: 'Typography 排版',
+        titleEn: 'Typography',
+        name: 'typography',
+        path: '/react/components/typography',
+        component: () => import('tdesign-react/typography/typography.md'),
+        componentEn: () => import('tdesign-react/typography/typography.en-US.md'),
+      },
     ],
   },
   {
@@ -456,6 +464,22 @@ export const docs = [
         path: '/react/components/comment',
         component: () => import('tdesign-react/comment/comment.md'),
         componentEn: () => import('tdesign-react/comment/comment.en-US.md'),
+      },
+      {
+        title: 'Descriptions 描述',
+        titleEn: 'Descriptions',
+        name: 'descriptions',
+        path: '/react/components/descriptions',
+        component: () => import('tdesign-react/descriptions/descriptions.md'),
+        componentEn: () => import('tdesign-react/descriptions/descriptions.en-US.md'),
+      },
+      {
+        title: 'Empty 空状态',
+        titleEn: 'Empty',
+        name: 'Empty',
+        path: '/react/components/empty',
+        component: () => import('tdesign-react/empty/empty.md'),
+        componentEn: () => import('tdesign-react/empty/empty.en-US.md'),
       },
       {
         title: 'Image 图片',

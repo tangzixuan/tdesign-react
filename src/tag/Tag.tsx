@@ -1,12 +1,14 @@
-import React, { FocusEvent, forwardRef } from 'react';
+import React, { ForwardRefRenderFunction, FocusEvent, forwardRef, useMemo } from 'react';
 import classNames from 'classnames';
 import { CloseIcon as TdCloseIcon } from 'tdesign-icons-react';
+import tinycolor from 'tinycolor2';
 import noop from '../_util/noop';
 import useConfig from '../hooks/useConfig';
 import useGlobalIcon from '../hooks/useGlobalIcon';
 import { StyledProps } from '../common';
 import { TdTagProps } from './type';
 import { tagDefaultProps } from './defaultProps';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 /**
  * Tag 组件支持的属性。
@@ -15,13 +17,13 @@ export interface TagProps extends TdTagProps, StyledProps {
   /**
    * 标签内容
    */
-  children?: React.ReactNode;
   tabIndex?: number;
   onFocus?: (e: FocusEvent<HTMLDivElement>) => void;
   onBlur?: (e: FocusEvent<HTMLDivElement>) => void;
 }
 
-export function TagFunction(props: TagProps, ref: React.Ref<HTMLDivElement>) {
+export const TagFunction: ForwardRefRenderFunction<HTMLDivElement, TagProps> = (originalProps, ref) => {
+  const props = useDefaultProps<TagProps>(originalProps, tagDefaultProps);
   const {
     theme,
     size,
@@ -37,6 +39,8 @@ export function TagFunction(props: TagProps, ref: React.Ref<HTMLDivElement>) {
     style,
     disabled,
     children,
+    color,
+    title: titleAttr,
     ...otherTagProps
   } = props;
 
@@ -77,11 +81,46 @@ export function TagFunction(props: TagProps, ref: React.Ref<HTMLDivElement>) {
     />
   );
 
-  const title = (() => {
+  const title = useMemo(() => {
+    if (Reflect.has(props, 'title')) return titleAttr;
     if (children && typeof children === 'string') return children;
     if (content && typeof content === 'string') return content;
-  })();
+  }, [children, content, props, titleAttr]);
   const titleAttribute = title ? { title } : undefined;
+
+  const getTagStyle = useMemo(() => {
+    if (!color) return style;
+    const luminance = tinycolor(color).getLuminance();
+
+    const calculatedStyle = style || {};
+
+    calculatedStyle.color = luminance > 0.5 ? 'black' : 'white';
+    if (variant === 'outline' || variant === 'light-outline') {
+      calculatedStyle.borderColor = color;
+    }
+
+    if (variant !== 'outline') {
+      const getLightestShade = () => {
+        const { r, g, b } = tinycolor(color).toRgb();
+        // alpha 0.1  is designed by @wen1kang
+        return `rgba(${r}, ${g}, ${b}, 0.1)`;
+      };
+
+      calculatedStyle.backgroundColor = variant === 'dark' ? color : getLightestShade();
+    }
+    if (variant !== 'dark') {
+      calculatedStyle.color = color;
+    }
+    return calculatedStyle;
+  }, [color, variant, style]);
+
+  const getTextStyle = useMemo(() => {
+    if (!maxWidth) return {};
+
+    return {
+      maxWidth: isNaN(Number(maxWidth)) ? String(maxWidth) : `${maxWidth}px`,
+    };
+  }, [maxWidth]);
 
   const tag = (
     <div
@@ -91,12 +130,12 @@ export function TagFunction(props: TagProps, ref: React.Ref<HTMLDivElement>) {
         if (disabled) return;
         onClick({ e });
       }}
-      style={maxWidth ? { maxWidth: typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth, ...style } : style}
+      style={getTagStyle}
       {...otherTagProps}
     >
       <>
         {icon}
-        <span className={maxWidth ? `${tagClassPrefix}--text` : undefined} {...titleAttribute}>
+        <span className={maxWidth ? `${tagClassPrefix}--text` : undefined} style={getTextStyle} {...titleAttribute}>
           {children ?? content}
         </span>
         {closable && !disabled && deleteIcon}
@@ -105,11 +144,10 @@ export function TagFunction(props: TagProps, ref: React.Ref<HTMLDivElement>) {
   );
 
   return tag;
-}
+};
 
 export const Tag = forwardRef(TagFunction);
 
 Tag.displayName = 'Tag';
-Tag.defaultProps = tagDefaultProps;
 
 export default Tag;

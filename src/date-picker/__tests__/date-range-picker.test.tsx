@@ -1,4 +1,3 @@
-import MockDate from 'mockdate';
 import React from 'react';
 import { BrowseIcon, LockOnIcon } from 'tdesign-icons-react';
 import dayjs from 'dayjs';
@@ -7,17 +6,15 @@ import { render, fireEvent, act, waitFor, vi } from '@test/utils';
 
 import { DateRangePicker } from '..';
 
-// 固定时间，当使用 new Date() 时，返回固定时间，防止“当前时间”的副作用影响，导致 snapshot 变更，mockdate 插件见 https://github.com/boblauer/MockDate
-MockDate.set('2022-08-27');
-
 describe('DateRangePicker', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    MockDate.set('2022-08-27');
+    const mockDate = new Date(2022, 7, 27);
+    vi.setSystemTime(mockDate);
   });
 
   afterEach(() => {
-    MockDate.reset();
+    vi.useRealTimers();
   });
 
   it('clearable', async () => {
@@ -155,6 +152,14 @@ describe('DateRangePicker', () => {
     const tips = 'test-tips';
     const { queryByText } = render(<DateRangePicker tips={tips} />);
     expect(queryByText(tips)).toBeInTheDocument();
+  });
+
+  it('label', async () => {
+    const label = 'test-label';
+    const { container } = render(<DateRangePicker label={label} />);
+    const prefix = container.querySelector('.t-input__prefix');
+    expect(prefix).toBeTruthy();
+    expect(prefix).toHaveTextContent(label);
   });
 
   it('onBlur onFocus', async () => {

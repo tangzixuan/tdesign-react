@@ -3,7 +3,7 @@ import {
   AddRectangleIcon as TdAddRectangleIcon,
   MinusRectangleIcon as TdMinusRectangleIcon,
 } from 'tdesign-icons-react';
-import get from 'lodash/get';
+import { get } from 'lodash-es';
 import classNames from 'classnames';
 import TableTreeStore, { SwapParams } from '../../_common/js/table/tree-store';
 import { TdEnhancedTableProps, PrimaryTableCol, TableRowData, TableRowValue, TableRowState } from '../type';
@@ -19,8 +19,8 @@ export interface UseSwapParams<T> extends SwapParams<T> {
 }
 
 export default function useTreeData(props: TdEnhancedTableProps) {
-  const { data, columns, tree, rowKey, treeExpandAndFoldIcon } = props;
-  const [store] = useState(new TableTreeStore() as InstanceType<typeof TableTreeStore>);
+  const { data, columns, tree, rowKey, treeExpandAndFoldIcon, expandedTreeNodes } = props;
+  const [store] = useState(() => new TableTreeStore() as InstanceType<typeof TableTreeStore>);
   const [treeNodeCol, setTreeNodeCol] = useState<PrimaryTableCol>(() => getTreeNodeColumnCol());
   const [dataSource, setDataSource] = useState<TdEnhancedTableProps['data']>(data || []);
   const { tableTreeClasses } = useClassName();
@@ -70,7 +70,7 @@ export default function useTreeData(props: TdEnhancedTableProps) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data],
+    [data, expandedTreeNodes],
   );
 
   useEffect(

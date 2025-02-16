@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, MouseEvent } from 'react';
-import get from 'lodash/get';
-import set from 'lodash/set';
-import isFunction from 'lodash/isFunction';
-import cloneDeep from 'lodash/cloneDeep';
+import { get , set , isFunction , cloneDeep } from 'lodash-es';
 import { Edit1Icon as TdEdit1Icon } from 'tdesign-icons-react';
 import classNames from 'classnames';
 import {
@@ -43,7 +40,7 @@ const EditableCell = (props: EditableCellProps) => {
   const { Edit1Icon } = useGlobalIcon({ Edit1Icon: TdEdit1Icon });
   const tableEditableCellRef = useRef(null);
   const isKeepEditMode = Boolean(col.edit?.keepEditMode);
-  const [isEdit, setIsEdit] = useState(isKeepEditMode || props.col.edit?.defaultEditable || false);
+  const [isEdit, setIsEdit] = useState(() => isKeepEditMode || props.col.edit?.defaultEditable || false);
   const [editValue, setEditValue] = useState();
   const [errorList, setErrorList] = useState<AllValidateResult[]>([]);
   const { classPrefix } = useConfig();
@@ -128,7 +125,7 @@ const EditableCell = (props: EditableCellProps) => {
   }, [col]);
 
   const validateEdit = (trigger: 'self' | 'parent', newVal: any) =>
-    new Promise((resolve) => {
+    new Promise<AllValidateResult[] | boolean>((resolve) => {
       const params: PrimaryTableRowValidateContext<TableRowData> = {
         result: [
           {
