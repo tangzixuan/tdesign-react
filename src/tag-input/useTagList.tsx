@@ -1,15 +1,17 @@
 import React, { useState, MouseEvent, KeyboardEvent, ReactNode, Fragment } from 'react';
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import { TagInputChangeContext, TagInputValue, TdTagInputProps } from './type';
 import { InputValue } from '../input';
 import Tag from '../tag';
 import useConfig from '../hooks/useConfig';
 import useControlled from '../hooks/useControlled';
-import { DragSortInnerProps } from '../_util/useDragSorter';
+import { DragSortInnerProps } from '../hooks/useDragSorter';
 
 export type ChangeParams = [TagInputChangeContext];
 
-interface TagInputProps extends TdTagInputProps, DragSortInnerProps {}
+interface TagInputProps extends TdTagInputProps, DragSortInnerProps {
+  options?: any[]; // 参数穿透options, 给SelectInput/SelectInput 自定义选中项呈现的内容和多选状态下设置折叠项内容
+}
 
 // handle tag add and remove
 export default function useTagList(props: TagInputProps) {
@@ -22,11 +24,11 @@ export default function useTagList(props: TagInputProps) {
   const [oldInputValue, setOldInputValue] = useState<InputValue>();
 
   // 点击标签关闭按钮，删除标签
-  const onClose = (p: { e?: MouseEvent<SVGSVGElement>; index: number; item: string | number }) => {
+  const onClose = (p: { e?: MouseEvent<SVGSVGElement>; index: number }) => {
     const arr = [...tagValue];
-    arr.splice(p.index, 1);
-    setTagValue(arr, { trigger: 'tag-remove', ...p });
-    onRemove?.({ ...p, trigger: 'tag-remove', value: arr });
+    const [item] = arr.splice(p.index, 1);
+    setTagValue(arr, { trigger: 'tag-remove', ...p, item });
+    onRemove?.({ ...p, item, trigger: 'tag-remove', value: arr });
   };
 
   const clearAll = (context: { e: MouseEvent<SVGSVGElement> }) => {
@@ -57,7 +59,7 @@ export default function useTagList(props: TagInputProps) {
   // 按下回退键，删除标签
   const onInputBackspaceKeyDown = (value: InputValue, context: { e: KeyboardEvent<HTMLInputElement> }) => {
     const { e } = context;
-    if (!tagValue || !tagValue.length) return;
+    if (!tagValue || !tagValue.length || readonly) return;
     // 回车键删除，输入框值为空时，才允许 Backspace 删除标签
     if (!value && ['Backspace', 'NumpadDelete'].includes(e.key)) {
       const index = tagValue.length - 1;
@@ -71,6 +73,7 @@ export default function useTagList(props: TagInputProps) {
 
   const renderLabel = ({ displayNode, label }: { displayNode: ReactNode; label: ReactNode }) => {
     const newList = minCollapsedNum ? tagValue.slice(0, minCollapsedNum) : tagValue;
+
     const list = displayNode
       ? [<Fragment key="display-node">{displayNode}</Fragment>]
       : newList?.map((item, index) => {
@@ -80,7 +83,7 @@ export default function useTagList(props: TagInputProps) {
               key={index}
               size={size}
               disabled={disabled}
-              onClose={(context) => onClose({ e: context.e, item, index })}
+              onClose={(context) => onClose({ e: context.e, index })}
               closable={!readonly && !disabled}
               {...getDragProps?.(index, item)}
               {...tagProps}
@@ -99,13 +102,25 @@ export default function useTagList(props: TagInputProps) {
     // 超出省略
     if (newList.length !== tagValue.length) {
       const len = tagValue.length - newList.length;
+      // 这里会从selectInput/SelectInput中传递options参数，用于自定义选中项呈现的内容和多选状态下设置折叠项内容
+      const options = Array.isArray(props?.options) ? props.options : tagValue;
       const params = {
         value: tagValue,
         count: tagValue.length - minCollapsedNum,
         collapsedTags: tagValue.slice(minCollapsedNum, tagValue.length),
+        collapsedSelectedItems: options.slice(minCollapsedNum, tagValue.length),
+        onClose,
       };
       const more = isFunction(collapsedItems) ? collapsedItems(params) : collapsedItems;
-      list.push(<Fragment key="more">{more ?? <Tag size={size}>+{len}</Tag>}</Fragment>);
+      list.push(
+        <Fragment key="more">
+          {more ?? (
+            <Tag size={size} {...tagProps}>
+              +{len}
+            </Tag>
+          )}
+        </Fragment>,
+      );
     }
     return list;
   };

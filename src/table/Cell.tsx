@@ -1,7 +1,6 @@
-import React, { MouseEvent, MutableRefObject } from 'react';
+import React, { MouseEvent, MutableRefObject, ReactNode } from 'react';
 import classNames from 'classnames';
-import isFunction from 'lodash/isFunction';
-import get from 'lodash/get';
+import { isFunction , get } from 'lodash-es';
 import TEllipsis from './Ellipsis';
 import { BaseTableCellParams, RowspanColspan, TableRowData, TdBaseTableProps } from './type';
 import { RowAndColFixedPosition } from './interface';
@@ -12,7 +11,7 @@ import { TooltipProps } from '../tooltip';
 import { PaginationProps } from '../pagination';
 
 export interface RenderEllipsisCellParams {
-  cellNode: any;
+  cellNode: ReactNode;
   tableElm?: HTMLDivElement;
   columnLength: number;
   classPrefix?: string;

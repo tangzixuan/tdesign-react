@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import isNumber from 'lodash/isNumber';
-import isFunction from 'lodash/isFunction';
+import classNames from 'classnames';
+import { isNumber , isFunction } from 'lodash-es';
 import {
   ArrowTriangleDownFilledIcon as TDArrowTriangleDownFilledIcon,
   ArrowTriangleUpFilledIcon as TDArrowTriangleUpFilledIcon,
@@ -15,7 +15,7 @@ import useIsFirstRender from '../hooks/useIsFirstRender';
 
 import Skeleton from '../skeleton';
 import Tween from '../_common/js/statistic/tween';
-import { COLOR_MAP } from '../_common/js/statistic/utils';
+import { COLOR_MAP, getFormatValue } from '../_common/js/statistic/utils';
 
 export interface StatisticProps extends TdStatisticProps, StyledProps {}
 
@@ -25,6 +25,8 @@ export interface StatisticRef {
 
 const Statistic = forwardRef<StatisticRef, StatisticProps>((props, ref) => {
   const {
+    className,
+    style,
     animation,
     animationStart,
     color,
@@ -82,13 +84,9 @@ const Statistic = forwardRef<StatisticRef, StatisticProps>((props, ref) => {
     if (isFunction(format)) {
       return format(formatInnerValue);
     }
-    const options = {
-      minimumFractionDigits: decimalPlaces || 0,
-      maximumFractionDigits: decimalPlaces || 20,
-      useGrouping: !!separator,
-    };
+
     // replace的替换的方案仅能应对大部分地区
-    formatInnerValue = formatInnerValue.toLocaleString(undefined, options).replace(/,|，/g, separator);
+    formatInnerValue = getFormatValue(formatInnerValue, decimalPlaces, separator);
 
     return formatInnerValue;
   }, [innerValue, decimalPlaces, separator, format]);
@@ -139,7 +137,7 @@ const Statistic = forwardRef<StatisticRef, StatisticProps>((props, ref) => {
   const suffixRender = suffix || (trendIcon && trendPlacement === 'right' ? trendIcon : null);
 
   return (
-    <div className={`${classPrefix}-statistic`}>
+    <div className={classNames(`${classPrefix}-statistic`, className)} style={style}>
       {title && <div className={`${classPrefix}-statistic-title`}>{title}</div>}
       <Skeleton animation="gradient" theme="text" loading={!!loading}>
         <div className={`${classPrefix}-statistic-content`} style={valueStyle}>

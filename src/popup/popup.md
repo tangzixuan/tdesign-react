@@ -1,10 +1,41 @@
 :: BASE_DOC ::
 
+### 通过插件方式调用Popup
+
+通过插件方式调用Popup，用于将Popup渲染在已有节点的场景，同时该方式不论如何调用都只会挂载在一个节点上，用于减少页面上的Popup的渲染节点。
+
+支持函数式调用 `PopupPlugin` 。
+- `PopupPlugin(triggerElement, content, popupProps)`
+
+{{ plugin }}
+
 ### 动态自适应
 
 当trigger或popup显示内容动态变化时，自适应调整位置
 
 {{ dynamic }}
+
+### popperOptions 使用
+
+https://popper.js.org/docs/v2/constructors/#types
+
+- `popperOptions` = `Options`
+
+{{ popper-options }}
+
+## FAQ
+
+### `Popup` 组件，嵌套使用可能出现位置偏移的情况，如何解决？
+
+目前暂时可通过 `Fragment` 或者其他 `HTML` 元素来解决
+
+```js
+<Popup content="Popup Content">
+  <>
+    {children}
+  </>
+</Popup>
+```
 
 ## API
 ### Popup Props

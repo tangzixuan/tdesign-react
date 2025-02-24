@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import classnames from 'classnames';
 import useConfig from '../hooks/useConfig';
 import { SwiperProps } from './Swiper';
+import useIsFirstRender from '../hooks/useIsFirstRender';
 
 export interface SwiperItemProps extends SwiperProps {
   currentIndex?: number;
@@ -41,7 +42,7 @@ const calculateTranslate = (index: number, currentIndex: number, parentWidth: nu
   return ((2 + itemWidth * (CARD_SCALE - 1)) * parentWidth) / 2;
 };
 
-const getZindex = (isActivity, inStage) => {
+const getZindex = (isActivity: boolean, inStage: boolean) => {
   if (isActivity) {
     return 2;
   }
@@ -51,7 +52,7 @@ const getZindex = (isActivity, inStage) => {
   return 0;
 };
 
-const SwiperItem = (props: SwiperItemProps) => {
+const SwiperItem: React.FC<SwiperItemProps> = (props) => {
   const {
     children,
     currentIndex,
@@ -64,8 +65,10 @@ const SwiperItem = (props: SwiperItemProps) => {
     getWrapAttribute,
   } = props;
   const { classPrefix } = useConfig();
+  const [, setUpdate] = useState({});
+  const isFirstFirstRender = useIsFirstRender();
 
-  const getSwiperItemStyle = () => {
+  const getSwiperItemStyle = (): React.CSSProperties => {
     if (animation === 'fade') {
       return {
         opacity: currentIndex === index ? 1 : 0,
@@ -91,14 +94,22 @@ const SwiperItem = (props: SwiperItemProps) => {
     return {};
   };
 
+  useEffect(() => {
+    if (isFirstFirstRender) {
+      setUpdate({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
       className={classnames(`${classPrefix}-swiper__container__item`, {
         [`${classPrefix}-swiper__card`]: type === 'card',
-        [`${classPrefix}-is-active`]: type === 'card' && index === currentIndex,
+        [`${classPrefix}-is-active`]: index === currentIndex,
         [`${classPrefix}-swiper__fade`]: animation === 'fade',
       })}
       style={getSwiperItemStyle()}
+      data-index={index}
     >
       {children}
     </div>

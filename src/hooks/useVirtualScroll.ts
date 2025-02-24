@@ -19,7 +19,7 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
   /** 注意测试：数据长度为空；数据长度小于表格高度等情况。即期望只有数据量达到一定程度才允许开启虚拟滚动 */
   const [visibleData, setVisibleData] = useState<any[]>([]);
   // 滚动过程中表格顶部占位距离
-  const [translateY, setTranslateY] = useState((data?.length || 0) * (scroll?.rowHeight || 50));
+  const [translateY, setTranslateY] = useState(() => (data?.length || 0) * (scroll?.rowHeight || 50));
   // 滚动高度，用于显示滚动条
   const [scrollHeight, setScrollHeight] = useState(0);
   const trScrollTopHeightList = useRef<number[]>([]);
@@ -27,7 +27,7 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
   const [trHeightList, setTrHeightList] = useState<number[]>([]);
   const containerWidth = useRef(0);
   const containerHeight = useRef(0);
-  const [startAndEndIndex, setStartAndEndIndex] = useState<[number, number]>([0, 15]);
+  const [startAndEndIndex, setStartAndEndIndex] = useState<[number, number]>(() => [0, (scroll?.bufferSize || 10) * 3]);
 
   // 设置初始值
   const tScroll = useMemo(() => {
@@ -43,17 +43,17 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
 
   // 当前场景是否满足开启虚拟滚动的条件
   const isVirtualScroll = useMemo(() => tScroll.type === 'virtual' && tScroll.threshold < data.length, [tScroll, data]);
-  const getTrScrollTopHeightList = (trHeightList: number[], containerHeight: number) => {
+  const getTrScrollTopHeightList = (trHeightList: number[]) => {
     const list: number[] = [];
     // 大数据场景不建议使用 forEach 一类函数迭代
-    // 当前行滚动高度 = 上一行滚动高度 + 当前行高度 + 容器高度
+    // 当前行滚动高度 = 上一行滚动高度 + 当前行高度
     for (let i = 0, len = data.length; i < len; i++) {
-      list[i] = (list[i - 1] || containerHeight) + (trHeightList[i] || tScroll.rowHeight);
+      list[i] = (list[i - 1] || 0) + (trHeightList[i] || tScroll.rowHeight);
     }
     return list;
   };
 
-  const tripleBufferSize = useMemo(() => tScroll.bufferSize * 3, [tScroll.bufferSize]);
+  // const tripleBufferSize = useMemo(() => tScroll.bufferSize * 3, [tScroll.bufferSize]);
 
   const updateVisibleData = (trScrollTopHeightList: number[], scrollTop: number) => {
     let currentIndex = -1;
@@ -64,14 +64,24 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
         break;
       }
     }
+    let lastIndex = trScrollTopHeightList.length;
+    const containerCurrentHeight = containerHeight.current || container.current.getBoundingClientRect().height;
+    const scrollBottom = scrollTop + containerCurrentHeight;
+    // 获取当前视窗的最后一个元素（大数据场景不建议使用 forEach 一类函数迭代）
+    for (let i = currentIndex, len = trScrollTopHeightList.length; i < len; i++) {
+      if (trScrollTopHeightList[i] >= scrollBottom) {
+        lastIndex = i;
+        break;
+      }
+    }
     if (currentIndex < 0) return;
-    const startIndex = Math.min(currentIndex, trScrollTopHeightList.length - tripleBufferSize);
-    const endIndex = startIndex + tripleBufferSize;
+    const startIndex = Math.max(currentIndex - tScroll.bufferSize, 0);
+    const endIndex = Math.min(lastIndex + tScroll.bufferSize, trScrollTopHeightList.length);
     if (startAndEndIndex.join() !== [startIndex, endIndex].join() && startIndex >= 0) {
       const tmpVisibleData = data.slice(startIndex, endIndex);
       setVisibleData(tmpVisibleData);
       const lastScrollTop = trScrollTopHeightList[startIndex - 1];
-      const top = lastScrollTop > 0 ? lastScrollTop - containerHeight.current : 0;
+      const top = lastScrollTop > 0 ? lastScrollTop : 0;
       setTranslateY(top);
       setStartAndEndIndex([startIndex, endIndex]);
     }
@@ -88,7 +98,7 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
       newTrHeightList[rowIndex] = trHeight;
       setTrHeightList(newTrHeightList);
 
-      const scrollTopHeightList = getTrScrollTopHeightList(newTrHeightList, containerHeight.current);
+      const scrollTopHeightList = getTrScrollTopHeightList(newTrHeightList);
       trScrollTopHeightList.current = scrollTopHeightList;
 
       const lastIndex = scrollTopHeightList.length - 1;
@@ -117,14 +127,12 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
 
   const addIndexToData = (data: any[]) => {
     data.forEach((item, index) => {
-      // eslint-disable-next-line
-      item['__VIRTUAL_SCROLL_INDEX'] = index;
+      Reflect.set(item, '__VIRTUAL_SCROLL_INDEX', index);
     });
   };
 
   const updateScrollTop = ({ index, top = 0, behavior }: ScrollToElementParams) => {
-    const containerCurrentHeight = containerHeight.current || container.current.getBoundingClientRect().height;
-    const scrollTop = trScrollTopHeightList.current[index] - containerCurrentHeight - top;
+    const scrollTop = trScrollTopHeightList.current[index] - top;
     container.current?.scrollTo({
       top: scrollTop,
       behavior: behavior || 'auto',
@@ -153,18 +161,15 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
   useEffect(
     () => {
       if (!isVirtualScroll) {
-        trScrollTopHeightList.current = getTrScrollTopHeightList(
-          trHeightList,
-          container.current?.getBoundingClientRect().height,
-        );
+        trScrollTopHeightList.current = getTrScrollTopHeightList(trHeightList);
         return;
       }
 
       // 给数据添加下标
       addIndexToData(data);
       setScrollHeight(data.length * tScroll.rowHeight);
-      const startIndex = startAndEndIndex[0];
-      const tmpData = data.slice(startIndex, startIndex + tripleBufferSize);
+      const [startIndex, endIndex] = startAndEndIndex;
+      const tmpData = data.slice(startIndex, endIndex);
 
       setVisibleData(tmpData);
 
@@ -172,14 +177,14 @@ const useVirtualScroll = (container: MutableRefObject<HTMLElement>, params: UseV
         if (container.current) {
           const tmpContainerHeight = container.current.getBoundingClientRect().height;
           containerHeight.current = tmpContainerHeight;
-          const scrollTopHeightList = getTrScrollTopHeightList(trHeightList, tmpContainerHeight);
+          const scrollTopHeightList = getTrScrollTopHeightList(trHeightList);
           trScrollTopHeightList.current = scrollTopHeightList;
           clearTimeout(timer);
         }
       }, 1);
     },
     // eslint-disable-next-line
-    [container, data, tScroll, isVirtualScroll, startAndEndIndex, trHeightList, tripleBufferSize],
+    [container, data, tScroll, isVirtualScroll, startAndEndIndex, trHeightList],
   );
 
   return {

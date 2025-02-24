@@ -8,22 +8,25 @@ import React, {
   DragEvent,
   isValidElement,
   useEffect,
+  useState,
 } from 'react';
 import classNames from 'classnames';
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import { CaretRightSmallIcon as TdCaretRightSmallIcon } from 'tdesign-icons-react';
 import Loading from '../loading';
-import useRipple from '../_util/useRipple';
+import useRipple from '../hooks/useRipple';
 import useDomRefCallback from '../hooks/useDomRefCallback';
 import useGlobalIcon from '../hooks/useGlobalIcon';
-import TreeNode from '../_common/js/tree/tree-node';
+import TreeNode from '../_common/js/tree-v1/tree-node';
 import Checkbox from '../checkbox';
 import { useTreeConfig } from './hooks/useTreeConfig';
 import useDraggable from './hooks/useDraggable';
 import composeRefs from '../_util/composeRefs';
 import useConfig from '../hooks/useConfig';
 
+import type { TdTreeProps } from './type';
 import type { TreeItemProps } from './interface';
+import type { TypeTreeNodeData } from '../_common/js/tree-v1/types';
 
 /**
  * 树节点组件
@@ -33,6 +36,8 @@ const TreeItem = forwardRef(
     props: TreeItemProps & {
       onTreeItemMounted?: (rowData: { ref: HTMLElement; data: TreeNode }) => void;
       isVirtual?: boolean;
+      keys: TdTreeProps['keys'];
+      allowDrop?: TdTreeProps['allowDrop'];
     },
     ref: React.Ref<HTMLDivElement>,
   ) => {
@@ -50,6 +55,7 @@ const TreeItem = forwardRef(
       onChange,
       isVirtual,
       onTreeItemMounted,
+      allowDrop,
     } = props;
 
     const { CaretRightSmallIcon } = useGlobalIcon({
@@ -208,11 +214,23 @@ const TreeItem = forwardRef(
     const [labelDom, setRefCurrent] = useDomRefCallback();
     useRipple(labelDom);
 
+    // setData需要强制刷新组件来更新数据
+    const [, updateRender] = useState({});
+
     const renderLabel = () => {
       const emptyView = locale('empty');
       let labelText: string | ReactNode = '';
       if (label instanceof Function) {
-        labelText = label(node.getModel()) || emptyView;
+        const { setData: nodeSetData, ...rest } = node.getModel();
+        labelText =
+          label({
+            ...rest,
+            // 拦截setData render tree-item
+            setData: (value: TypeTreeNodeData) => {
+              nodeSetData(value);
+              updateRender({});
+            },
+          }) || emptyView;
       } else {
         labelText = node.label || emptyView;
       }
@@ -242,7 +260,7 @@ const TreeItem = forwardRef(
             name={String(node.value)}
             onChange={(checked, ctx) => onChange(node, ctx)}
             className={labelClasses}
-            stopLabelTrigger={!!node.children}
+            stopLabelTrigger={expandOnClickNode && !!node.children}
             {...checkProps}
           >
             <span date-target="label">{labelText}</span>
@@ -292,6 +310,7 @@ const TreeItem = forwardRef(
     const { setDragStatus, isDragging, dropPosition, isDragOver } = useDraggable({
       node,
       nodeRef,
+      allowDrop,
     });
 
     const handleDragStart: DragEventHandler<HTMLDivElement> = (evt: DragEvent<HTMLDivElement>) => {
@@ -328,11 +347,13 @@ const TreeItem = forwardRef(
     };
     const handleDrop: DragEventHandler<HTMLDivElement> = (evt: DragEvent<HTMLDivElement>) => {
       const { node } = props;
+
       if (!node.isDraggable()) return;
       evt.stopPropagation();
       evt.preventDefault();
       setDragStatus('drop', evt);
     };
+    const childrenKey = props.keys?.children || 'children';
 
     return (
       <div
@@ -342,7 +363,9 @@ const TreeItem = forwardRef(
         className={classNames(treeClassNames.treeNode, {
           [treeClassNames.treeNodeOpen]:
             node.expanded &&
-            (typeof node.data.children === 'boolean' ? node.data.children : node.data.children !== undefined),
+            (typeof node.data[childrenKey] === 'boolean'
+              ? node.data[childrenKey]
+              : node.data[childrenKey] !== undefined),
           [treeClassNames.actived]: node.isActivable() ? node.actived : false,
           [treeClassNames.disabled]: node.isDisabled(),
           [treeClassNames.treeNodeDraggable]: node.isDraggable(),

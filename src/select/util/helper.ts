@@ -1,10 +1,9 @@
 import { ReactElement } from 'react';
-import isPlainObject from 'lodash/isPlainObject';
-import get from 'lodash/get';
+import { isPlainObject , get } from 'lodash-es';
 import OptionGroup from '../base/OptionGroup';
 import Option from '../base/Option';
 
-import { SelectValue, TdOptionProps, SelectKeysType, TdSelectProps } from '../type';
+import { SelectValue, TdOptionProps, SelectKeysType, TdSelectProps, SelectOption } from '../type';
 
 type SelectLabeledValue = Required<Omit<TdOptionProps, 'disabled'>>;
 
@@ -192,17 +191,36 @@ export const getSelectedOptions = (
   valueType: TdSelectProps['valueType'],
   keys: SelectKeysType,
   tmpPropOptions: Array<unknown>,
+  selectedValue?: SelectValue,
 ) => {
   const isObjectType = valueType === 'object';
+  // 当前所有选中的选项
   let currentSelectedOptions = [];
+  // 当前选中的选项
+  let currentOption: SelectOption;
+  // 全选值
+  let allSelectedValue: Array<SelectValue>;
   if (multiple) {
     currentSelectedOptions = isObjectType
-      ? (value as Array<string | number>)
+      ? (value as Array<SelectValue>)
       : tmpPropOptions?.filter?.((v) => (value as Array<string | number>).includes?.(v[keys?.value || 'value']));
+
+    allSelectedValue = isObjectType
+      ? currentSelectedOptions
+      : currentSelectedOptions?.map((v) => v[keys?.value || 'value']);
+
+    currentOption = isObjectType
+      ? (value as Array<SelectValue>).find((v) => v[keys?.value || 'value'] === selectedValue)
+      : currentSelectedOptions?.find((option) => option[keys?.value || 'value'] === selectedValue);
   } else {
     currentSelectedOptions = isObjectType
       ? [value]
       : tmpPropOptions?.filter?.((v) => value === v[keys?.value || 'value']) || [];
+    allSelectedValue = currentSelectedOptions;
+    currentOption = isObjectType
+      ? value
+      : currentSelectedOptions?.find((option) => option[keys?.value || 'value'] === selectedValue);
   }
-  return currentSelectedOptions;
+
+  return { currentSelectedOptions, currentOption, allSelectedValue };
 };

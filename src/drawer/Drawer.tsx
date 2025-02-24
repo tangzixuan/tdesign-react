@@ -1,12 +1,14 @@
-import React, { forwardRef, useState, useEffect, useImperativeHandle, useRef, useMemo } from 'react';
+import React, { forwardRef, useState, useEffect, useImperativeHandle, useRef, useMemo, isValidElement } from 'react';
 import classnames from 'classnames';
+import { isString , isObject , isFunction } from 'lodash-es';
+
 import { CSSTransition } from 'react-transition-group';
 import { CloseIcon as TdCloseIcon } from 'tdesign-icons-react';
 
 import { useLocaleReceiver } from '../locale/LocalReceiver';
 import { TdDrawerProps, DrawerEventSource } from './type';
 import { StyledProps } from '../common';
-import Button from '../button';
+import Button, { ButtonProps } from '../button';
 import useConfig from '../hooks/useConfig';
 import useGlobalIcon from '../hooks/useGlobalIcon';
 import { drawerDefaultProps } from './defaultProps';
@@ -14,6 +16,8 @@ import useDrag from './hooks/useDrag';
 import Portal from '../common/Portal';
 import useLockStyle from './hooks/useLockStyle';
 import useDefaultProps from '../hooks/useDefaultProps';
+import parseTNode from '../_util/parseTNode';
+import useAttach from '../hooks/useAttach';
 
 export const CloseTriggerType: { [key: string]: DrawerEventSource } = {
   CLICK_OVERLAY: 'overlay',
@@ -25,6 +29,12 @@ export const CloseTriggerType: { [key: string]: DrawerEventSource } = {
 export interface DrawerProps extends TdDrawerProps, StyledProps {}
 
 const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
+  // 国际化文本初始化
+  const [local, t] = useLocaleReceiver('drawer');
+  const { CloseIcon } = useGlobalIcon({ CloseIcon: TdCloseIcon });
+  const confirmText = t(local.confirm);
+  const cancelText = t(local.cancel);
+
   const props = useDefaultProps<DrawerProps>(originalProps, drawerDefaultProps);
   const {
     className,
@@ -34,12 +44,15 @@ const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
     showOverlay,
     size: propsSize,
     placement,
+    onBeforeOpen,
+    onBeforeClose,
     onCancel,
     onConfirm,
     onClose,
     onCloseBtnClick,
     onOverlayClick,
     onEscKeydown,
+    onSizeDragEnd,
     showInAttachedElement,
     closeOnOverlayClick,
     closeOnEscKeydown,
@@ -48,28 +61,24 @@ const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
     body,
     footer,
     closeBtn,
-    cancelBtn,
-    confirmBtn,
+    cancelBtn = cancelText,
+    confirmBtn = confirmText,
     zIndex,
     destroyOnClose,
     sizeDraggable,
+    forceRender,
   } = props;
 
-  // 国际化文本初始化
-  const [local, t] = useLocaleReceiver('drawer');
-  const { CloseIcon } = useGlobalIcon({ CloseIcon: TdCloseIcon });
   const size = propsSize ?? local.size;
-  const confirmText = t(local.confirm);
-  const cancelText = t(local.cancel);
-
   const { classPrefix } = useConfig();
+  const drawerAttach = useAttach('drawer', attach);
   const maskRef = useRef<HTMLDivElement>();
   const containerRef = useRef<HTMLDivElement>();
   const drawerWrapperRef = useRef<HTMLElement>(); // 即最终的 attach dom，默认为 document.body
   const prefixCls = `${classPrefix}-drawer`;
 
-  const closeIcon = React.isValidElement(closeBtn) ? closeBtn : <CloseIcon />;
-  const { dragSizeValue, enableDrag, draggableLineStyles } = useDrag(placement, sizeDraggable);
+  const closeIcon = isValidElement(closeBtn) ? closeBtn : <CloseIcon />;
+  const { dragSizeValue, enableDrag, draggableLineStyles } = useDrag(placement, sizeDraggable, onSizeDragEnd);
   const [animationStart, setAnimationStart] = useState(visible);
 
   const sizeValue = useMemo(() => {
@@ -117,37 +126,57 @@ const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
     [visible, placement, sizeValue, animationStart],
   );
 
-  function getFooter(): React.ReactNode {
-    if (footer !== true) return footer;
+  const renderDrawerButton = (btn: DrawerProps['cancelBtn'], defaultProps: ButtonProps) => {
+    let result = null;
 
-    const defaultCancelBtn = (
-      <Button theme="default" onClick={onCancelClick} className={`${prefixCls}__cancel`}>
-        {cancelBtn && typeof cancelBtn === 'string' ? cancelBtn : cancelText}
-      </Button>
-    );
+    if (isString(btn)) {
+      result = <Button {...defaultProps}>{btn}</Button>;
+    } else if (isValidElement(btn)) {
+      result = btn;
+    } else if (isObject(btn)) {
+      result = <Button {...defaultProps} {...(btn as {})} />;
+    } else if (isFunction(btn)) {
+      result = btn();
+    }
 
-    const defaultConfirmBtn = (
-      <Button theme="primary" onClick={onConfirmClick} className={`${prefixCls}__confirm`}>
-        {confirmBtn && typeof confirmBtn === 'string' ? confirmBtn : confirmText}
-      </Button>
-    );
+    return result;
+  };
 
-    const renderCancelBtn = cancelBtn && React.isValidElement(cancelBtn) ? cancelBtn : defaultCancelBtn;
-    const renderConfirmBtn = confirmBtn && React.isValidElement(confirmBtn) ? confirmBtn : defaultConfirmBtn;
+  const renderFooter = () => {
+    const defaultFooter = () => {
+      const renderCancelBtn = renderDrawerButton(cancelBtn, {
+        theme: 'default',
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => onCancelClick?.(e),
+        className: `${prefixCls}__cancel`,
+      });
+      const renderConfirmBtn = renderDrawerButton(confirmBtn, {
+        theme: 'primary',
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => onConfirmClick?.(e),
+        className: `${prefixCls}__confirm`,
+      });
 
-    const footerStyle = {
-      display: 'flex',
-      justifyContent: placement === 'right' ? 'flex-start' : 'flex-end',
+      const footerStyle = {
+        display: 'flex',
+        justifyContent: placement === 'right' ? 'flex-start' : 'flex-end',
+      };
+
+      return (
+        <div style={footerStyle}>
+          {placement === 'right' ? (
+            <>
+              {renderConfirmBtn} {renderCancelBtn}
+            </>
+          ) : (
+            <>
+              {renderCancelBtn} {renderConfirmBtn}
+            </>
+          )}
+        </div>
+      );
     };
 
-    return (
-      <div style={footerStyle}>
-        {placement === 'right' && renderConfirmBtn}
-        {renderCancelBtn}
-        {placement !== 'right' && renderConfirmBtn}
-      </div>
-    );
-  }
+    return <div className={`${prefixCls}__footer`}>{parseTNode(footer, null, defaultFooter())}</div>;
+  };
 
   const renderOverlay = showOverlay && (
     <CSSTransition in={visible} timeout={200} classNames={`${prefixCls}-fade`} nodeRef={maskRef}>
@@ -161,18 +190,20 @@ const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
   );
   const renderHeader = header && <div className={`${prefixCls}__header`}>{header}</div>;
   const renderBody = <div className={`${prefixCls}__body`}>{body || children}</div>;
-  const renderFooter = footer && <div className={`${prefixCls}__footer`}>{getFooter()}</div>;
 
   return (
     <CSSTransition
       in={visible}
       nodeRef={drawerWrapperRef}
+      mountOnEnter={!forceRender}
       unmountOnExit={destroyOnClose}
       timeout={{ appear: 10, enter: 10, exit: 300 }}
+      onEnter={() => onBeforeOpen?.()}
       onEntered={() => setAnimationStart(true)}
+      onExit={() => onBeforeClose?.()}
       onExited={() => setAnimationStart(false)}
     >
-      <Portal attach={attach} ref={drawerWrapperRef}>
+      <Portal attach={drawerAttach} ref={drawerWrapperRef}>
         <div
           ref={containerRef}
           className={classnames(prefixCls, className, `${prefixCls}--${placement}`, {
@@ -192,7 +223,7 @@ const Drawer = forwardRef<HTMLDivElement, DrawerProps>((originalProps, ref) => {
             {renderCloseBtn}
             {renderHeader}
             {renderBody}
-            {renderFooter}
+            {!!footer && renderFooter()}
             {sizeDraggable && <div style={draggableLineStyles} onMouseDown={enableDrag}></div>}
           </div>
         </div>

@@ -5,7 +5,7 @@ import { useLocaleReceiver } from '../locale/LocalReceiver';
 import { TdDialogProps, DialogInstance } from './type';
 import { StyledProps } from '../common';
 import Portal from '../common/Portal';
-import useSetState from '../_util/useSetState';
+import useSetState from '../hooks/useSetState';
 import useConfig from '../hooks/useConfig';
 import { dialogDefaultProps } from './defaultProps';
 import DialogCard from './DialogCard';
@@ -16,6 +16,7 @@ import useDialogDrag from './hooks/useDialogDrag';
 import { parseValueToPx } from './utils';
 import log from '../_common/js/log';
 import useDefaultProps from '../hooks/useDefaultProps';
+import useAttach from '../hooks/useAttach';
 
 export interface DialogProps extends TdDialogProps, StyledProps {
   isPlugin?: boolean; // 是否以插件形式调用
@@ -37,12 +38,16 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
   const [local] = useLocaleReceiver('dialog');
 
   const {
+    className,
+    dialogClassName,
     style,
     width,
     mode,
     zIndex,
     visible,
     attach,
+    onBeforeOpen,
+    onBeforeClose,
     onOpened,
     onCancel,
     onConfirm,
@@ -60,9 +65,11 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
     destroyOnClose,
     preventScrollThrough,
     onCloseBtnClick,
+    forceRender = false,
     ...restState
   } = state;
 
+  const dialogAttach = useAttach('dialog', attach);
   useLockStyle({ preventScrollThrough, visible, mode, showInAttachedElement });
   useDialogEsc(visible, wrapRef);
   useDialogPosition(visible, dialogCardRef);
@@ -86,6 +93,9 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
     },
     hide() {
       setState({ visible: false });
+    },
+    setConfirmLoading: (loading: boolean) => {
+      setState({ confirmLoading: loading });
     },
     destroy() {
       setState({ visible: false, destroyOnClose: true });
@@ -147,6 +157,7 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
 
   const onAnimateStart = () => {
     if (!wrapRef.current) return;
+    onBeforeOpen?.();
     wrapRef.current.style.display = 'block';
   };
 
@@ -182,21 +193,22 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
       in={visible}
       appear
       timeout={300}
-      mountOnEnter
+      mountOnEnter={!forceRender}
       unmountOnExit={destroyOnClose}
       nodeRef={portalRef}
       onEnter={onAnimateStart}
       onEntered={onOpened}
+      onExit={() => onBeforeClose?.()}
       onExited={onAnimateLeave}
     >
-      <Portal attach={attach} ref={portalRef}>
+      <Portal attach={dialogAttach} ref={portalRef}>
         <div
           ref={wrapRef}
-          className={classNames(props.className, `${componentCls}__ctx`, `${componentCls}__${mode}`, {
+          className={classNames(className, `${componentCls}__ctx`, `${componentCls}__${mode}`, {
             [`${componentCls}__ctx--fixed`]: !showInAttachedElement,
             [`${componentCls}__ctx--absolute`]: showInAttachedElement,
           })}
-          style={{ zIndex }}
+          style={{ zIndex, display: 'none' }}
           onKeyDown={handleKeyDown}
           tabIndex={0}
         >
@@ -214,7 +226,6 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
               <CSSTransition
                 in={visible}
                 appear
-                mountOnEnter
                 timeout={300}
                 classNames={`${componentCls}-zoom`}
                 nodeRef={dialogCardRef}
@@ -224,6 +235,7 @@ const Dialog = forwardRef<DialogInstance, DialogProps>((originalProps, ref) => {
                 <DialogCard
                   ref={dialogCardRef}
                   {...restState}
+                  className={dialogClassName}
                   style={{ ...style, width: parseValueToPx(width || style?.width) }}
                   onConfirm={onConfirm}
                   onCancel={handleCancel}

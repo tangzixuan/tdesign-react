@@ -47,7 +47,7 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>((props, ref) => {
   } = useDefaultProps(props, alertDefaultProps);
 
   const [closed, setClosed] = React.useState(false);
-  const [collapsed, setCollapsed] = React.useState(false);
+  const [collapsed, setCollapsed] = React.useState(true);
 
   const iconMap = {
     success: CheckCircleFilledIcon,
@@ -62,12 +62,12 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>((props, ref) => {
   };
 
   const handleCollapse = () => {
-    setCollapsed(!collapsed);
+    setCollapsed((collapsed) => !collapsed);
   };
 
   const renderIconNode = () => {
     if (React.isValidElement(icon)) return icon;
-    return React.createElement(iconMap[theme] || iconMap.info);
+    return React.createElement(iconMap[theme]);
   };
 
   const renderMessage = () => {
@@ -75,8 +75,8 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>((props, ref) => {
       return (
         <div className={`${classPrefix}-alert__description`}>
           {message.map((item, index) => {
-            if (!collapsed) {
-              if (index < maxLine) {
+            if (collapsed) {
+              if (index < +maxLine) {
                 return <div key={index}>{item}</div>;
               }
             } else {
@@ -84,11 +84,11 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>((props, ref) => {
             }
             return true;
           })}
-          {+maxLine > 0 ? (
+          {+maxLine < message.length && (
             <div className={`${classPrefix}-alert__collapse`} onClick={handleCollapse}>
-              {!collapsed ? t(local.expandText) : t(local.collapseText)}
+              {collapsed ? t(local.expandText) : t(local.collapseText)}
             </div>
-          ) : null}
+          )}
         </div>
       );
     }

@@ -16,6 +16,11 @@ export interface TdAutoCompleteProps<T extends AutoCompleteOption = AutoComplete
    */
   autofocus?: boolean;
   /**
+   * 无边框模式
+   * @default false
+   */
+  borderless?: boolean;
+  /**
    * 触发显示联想词下拉框的元素，同 `triggerElement`
    */
   children?: TNode;
@@ -27,6 +32,10 @@ export interface TdAutoCompleteProps<T extends AutoCompleteOption = AutoComplete
    * 是否禁用
    */
   disabled?: boolean;
+  /**
+   * 当下拉联想词列表为空时显示的内容
+   */
+  empty?: TNode;
   /**
    * 自定义过滤规则，用于对现有数据进行搜索过滤，判断是否过滤某一项数据。参数 `filterWords` 表示搜索词，`option`表示单个选项内容，返回值为 `true` 保留该选项，返回值为 `false` 则隐藏该选项。使用该方法时无需设置 `filterable`
    */
@@ -62,7 +71,7 @@ export interface TdAutoCompleteProps<T extends AutoCompleteOption = AutoComplete
    */
   placeholder?: string;
   /**
-   * 透传 Popup 组件全部特性
+   * 透传 Popup 组件全部属性
    */
   popupProps?: PopupProps;
   /**

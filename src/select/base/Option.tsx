@@ -1,12 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import classNames from 'classnames';
-import isNumber from 'lodash/isNumber';
-import isString from 'lodash/isString';
-import get from 'lodash/get';
+import { isNumber , isString , get } from 'lodash-es';
 
 import useConfig from '../../hooks/useConfig';
 import useDomRefCallback from '../../hooks/useDomRefCallback';
-import useRipple from '../../_util/useRipple';
+import useRipple from '../../hooks/useRipple';
 import { StyledProps } from '../../common';
 import { SelectValue, TdOptionProps, TdSelectProps, SelectKeysType, SelectOption } from '../type';
 
@@ -60,8 +58,18 @@ const Option: React.FC<SelectOptionProps> = (props) => {
   } = props;
 
   let selected: boolean;
+  let indeterminate: boolean;
   const label = propLabel || value;
   const disabled = propDisabled || (multiple && Array.isArray(selectedValue) && max && selectedValue.length >= max);
+
+  const titleContent = useMemo(() => {
+    // 外部设置 props，说明希望受控
+    const controlledTitle = Reflect.has(props, 'title');
+    if (controlledTitle) return propTitle;
+    if (typeof label === 'string') return label;
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propTitle, label]);
 
   const { classPrefix } = useConfig();
 
@@ -98,6 +106,7 @@ const Option: React.FC<SelectOptionProps> = (props) => {
     });
     if (props.checkAll) {
       selected = selectedValue.length === props.optionLength;
+      indeterminate = selectedValue.length > 0 && !selected;
     }
   }
 
@@ -115,10 +124,11 @@ const Option: React.FC<SelectOptionProps> = (props) => {
       return (
         <label
           className={classNames(`${classPrefix}-checkbox`, {
+            [`${classPrefix}-is-indeterminate`]: indeterminate,
             [`${classPrefix}-is-disabled`]: disabled,
             [`${classPrefix}-is-checked`]: selected,
           })}
-          title={propTitle || (label as string)}
+          title={titleContent}
         >
           <input
             type="checkbox"
@@ -135,7 +145,7 @@ const Option: React.FC<SelectOptionProps> = (props) => {
         </label>
       );
     }
-    return <span title={propTitle || (label as string)}>{children || content || label}</span>;
+    return <span title={titleContent}>{children || content || label}</span>;
   };
 
   return (

@@ -5,9 +5,11 @@ import React, { useEffect, useState } from 'react';
 import Form, { TdFormProps } from '../index';
 import Input from '../../input';
 import Button from '../../button';
+import Radio from '../../radio';
 import { HelpCircleIcon } from 'tdesign-icons-react';
+import InputNumber from '../../input-number';
 
-const { FormItem } = Form;
+const { FormItem, FormList } = Form;
 
 describe('Form 组件测试', () => {
   const submitFn = vi.fn();
@@ -40,6 +42,8 @@ describe('Form 组件测试', () => {
   });
 
   test('form instance', async () => {
+    const fn = vi.fn();
+
     const TestForm = () => {
       const [form] = Form.useForm();
 
@@ -70,7 +74,7 @@ describe('Form 组件测试', () => {
       }
 
       return (
-        <Form form={form} labelWidth={100} colon>
+        <Form form={form} labelWidth={100} colon onValuesChange={fn}>
           <FormItem label="input1" name="input1" rules={[{ required: true, message: 'input1 未填写', type: 'error' }]}>
             <Input placeholder="input1" />
           </FormItem>
@@ -92,8 +96,12 @@ describe('Form 组件测试', () => {
     expect(getByPlaceholderText('input1').value).toEqual('');
     fireEvent.click(getByText('setFields'));
     expect(getByPlaceholderText('input1').value).toEqual('setFields');
+    expect(fn).toHaveBeenCalled();
+
     fireEvent.click(getByText('setFieldsValue'));
     expect(getByPlaceholderText('input1').value).toEqual('setFieldsValue');
+    expect(fn).toHaveBeenCalled();
+
     fireEvent.click(getByText('setValidateMessage'));
     expect(queryByText('message: setValidateMessage')).toBeTruthy();
 
@@ -107,6 +115,80 @@ describe('Form 组件测试', () => {
     expect(queryByText('input1 未填写')).toBeTruthy();
     fireEvent.click(getByText('clearValidate'));
     expect(queryByText('input1 未填写')).not.toBeTruthy();
+  });
+
+  test('form setFieldsValue', () => {
+    const mockName = 'name';
+    const mockName1 = 'name1';
+    const mockBirthday = '1996-01-24';
+    const mockBirthday1 = '1996-01-25';
+    const mockArea = '北京';
+    const mockArea1 = '北京';
+    const TestForm = () => {
+      const [form] = Form.useForm();
+      const handleSetFormData = () => {
+        form.setFieldsValue({
+          user: {
+            name: mockName1,
+          },
+          birthday: mockBirthday1,
+          address: [
+            {
+              area: mockArea1,
+            },
+          ],
+        });
+      };
+      return (
+        <Form
+          form={form}
+          initialData={{
+            user: {
+              name: mockName,
+            },
+            birthday: mockBirthday,
+            address: [
+              {
+                area: mockArea,
+              },
+            ],
+          }}
+        >
+          <FormItem label="姓名" name={['user', 'name']}>
+            <Input placeholder="name" />
+          </FormItem>
+          <FormItem label="生日" name="birthday">
+            <Input placeholder="birthday" />
+          </FormItem>
+          <FormList name="address">
+            {(fields) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <FormItem key={key}>
+                    <FormItem {...restField} name={[name, 'area']} label="地区">
+                      <Input placeholder="area" />
+                    </FormItem>
+                  </FormItem>
+                ))}
+              </>
+            )}
+          </FormList>
+          <FormItem>
+            <Button onClick={handleSetFormData}>SetFormData</Button>
+          </FormItem>
+        </Form>
+      );
+    };
+
+    const { getByPlaceholderText, getByText } = render(<TestForm />);
+    expect((getByPlaceholderText('name') as HTMLInputElement).value).toBe(mockName);
+    expect((getByPlaceholderText('birthday') as HTMLInputElement).value).toBe(mockBirthday);
+    expect((getByPlaceholderText('area') as HTMLInputElement).value).toBe(mockArea);
+
+    fireEvent.click(getByText('SetFormData'));
+    expect((getByPlaceholderText('name') as HTMLInputElement).value).toBe(mockName1);
+    expect((getByPlaceholderText('birthday') as HTMLInputElement).value).toBe(mockBirthday1);
+    expect((getByPlaceholderText('area') as HTMLInputElement).value).toBe(mockArea1);
   });
 
   test('Form.reset works fine', async () => {
@@ -340,5 +422,117 @@ describe('Form 组件测试', () => {
     fireEvent.blur(getByPlaceholderText('username'));
     await mockDelay();
     expect(container.querySelector('.t-input__extra').innerHTML).toBe('please input username');
+  });
+
+  test('FormItem rules min max', async () => {
+    const TestForm = () => {
+      const initialValues = {
+        year1: -2,
+        year2: 1,
+        year3: 4,
+        year4: -4,
+        year5: -1,
+        year6: 2,
+      };
+      return (
+        <Form initialData={initialValues}>
+          <FormItem name="year1" rules={[{ min: -3, message: 'year1  error' }]}>
+            <InputNumber placeholder="year1" />
+          </FormItem>
+          <FormItem name="year2" rules={[{ min: 0, message: 'year2  error' }]}>
+            <InputNumber placeholder="year2" />
+          </FormItem>
+          <FormItem name="year3" rules={[{ min: 3, message: 'year3  error' }]}>
+            <InputNumber placeholder="year3" />
+          </FormItem>
+          <FormItem name="year4" rules={[{ max: -3, message: 'year4  error' }]}>
+            <InputNumber placeholder="year4" />
+          </FormItem>
+          <FormItem name="year5" rules={[{ max: 0, message: 'year5  error' }]}>
+            <InputNumber placeholder="year5" />
+          </FormItem>
+          <FormItem name="year6" rules={[{ max: 3, message: 'year6  error' }]}>
+            <InputNumber placeholder="year6" />
+          </FormItem>
+          <FormItem>
+            <Button type="submit">提交</Button>
+          </FormItem>
+        </Form>
+      );
+    };
+    const { container, getByText, getByPlaceholderText } = render(<TestForm />);
+    fireEvent.click(getByText('提交'));
+    await mockDelay();
+    expect(container.querySelector('.t-input__extra')).toBeNull();
+
+    // 错误验证
+    fireEvent.change(getByPlaceholderText('year1'), { target: { value: -4 } });
+    fireEvent.change(getByPlaceholderText('year2'), { target: { value: -1 } });
+    fireEvent.change(getByPlaceholderText('year3'), { target: { value: 2 } });
+    fireEvent.change(getByPlaceholderText('year4'), { target: { value: -2 } });
+    fireEvent.change(getByPlaceholderText('year5'), { target: { value: 1 } });
+    fireEvent.change(getByPlaceholderText('year6'), { target: { value: 4 } });
+    fireEvent.click(getByText('提交'));
+    await mockDelay();
+    const input__extraList = container.querySelectorAll('.t-input__extra');
+    input__extraList.forEach((item: { innerHTML: string }, index: number) => {
+      expect(item.innerHTML).toBe(`year${index + 1}  error`);
+    });
+  });
+
+  test('动态渲染并初始赋值', () => {
+    const TestForm = () => {
+      const [form] = Form.useForm();
+      const setMessage = () => {
+        form.setFieldsValue({
+          gender: 'female',
+          radio2: '3',
+        });
+      };
+
+      return (
+        <Form form={form} colon labelWidth={100}>
+          <FormItem label="性别" name="gender" initialData="male">
+            <Radio.Group>
+              <Radio value="male">男性</Radio>
+              <Radio value="female">女性</Radio>
+            </Radio.Group>
+          </FormItem>
+          <FormItem shouldUpdate={(prev, next) => prev.gender !== next.gender}>
+            {({ getFieldValue }) => {
+              if (getFieldValue('gender') === 'female') {
+                return (
+                  <FormItem label="动态选项2" key="radio2" name="radio2">
+                    <Radio.Group className="radio-group-2">
+                      <Radio value="2">选项三</Radio>
+                      <Radio value="3" className="radio-value-3">
+                        选项四
+                      </Radio>
+                    </Radio.Group>
+                  </FormItem>
+                );
+              }
+              return (
+                <FormItem label="动态选项1" key="radio1" name="radio1" initialData="0">
+                  <Radio.Group>
+                    <Radio value="0">选项一</Radio>
+                    <Radio value="1">选项二</Radio>
+                  </Radio.Group>
+                </FormItem>
+              );
+            }}
+          </FormItem>
+
+          <FormItem style={{ marginLeft: 100 }}>
+            <Button onClick={setMessage}>设置信息</Button>
+          </FormItem>
+        </Form>
+      );
+    };
+
+    const { container, getByText } = render(<TestForm />);
+    fireEvent.click(getByText('设置信息'));
+
+    expect(container.querySelector('.radio-value-3')).toHaveClass('t-is-checked');
   });
 });

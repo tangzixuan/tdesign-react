@@ -6,7 +6,7 @@
 
 import { CheckboxProps } from '../checkbox';
 import { TNode, TreeOptionData, TScroll, ComponentScrollToElementParams } from '../common';
-import { MouseEvent, WheelEvent, DragEvent } from 'react';
+import { MouseEvent, DragEvent } from 'react';
 
 export interface TdTreeProps<T extends TreeOptionData = TreeOptionData> {
   /**
@@ -27,6 +27,15 @@ export interface TdTreeProps<T extends TreeOptionData = TreeOptionData> {
    * 高亮的节点值，非受控属性
    */
   defaultActived?: Array<TreeNodeValue>;
+  /**
+   * 判断节点是否可以执行 drop 操作，泛型 `T` 表示树节点 TS 类型
+   */
+  allowDrop?: (context: {
+    e: DragEvent;
+    dragNode: TreeNodeModel<T>;
+    dropNode: TreeNodeModel<T>;
+    dropPosition: number;
+  }) => boolean;
   /**
    * 是否允许在过滤时节点折叠节点
    * @default false
@@ -229,7 +238,7 @@ export interface TdTreeProps<T extends TreeOptionData = TreeOptionData> {
   /**
    * 滚动事件
    */
-  onScroll?: (params: { e: WheelEvent<HTMLDivElement> }) => void;
+  onScroll?: (params: { e: WheelEvent }) => void;
 }
 
 /** 组件实例方法 */

@@ -1,12 +1,11 @@
 import React, { useMemo } from 'react';
 import classNames from 'classnames';
-import pick from 'lodash/pick';
-import omit from 'lodash/omit';
+import { pick, omit } from 'lodash-es';
 import Panel from './components/Panel';
 import SelectInput from '../select-input';
 import FakeArrow from '../common/FakeArrow';
 import useConfig from '../hooks/useConfig';
-import useCommonClassName from '../_util/useCommonClassName';
+import useCommonClassName from '../hooks/useCommonClassName';
 import { useLocaleReceiver } from '../locale/LocalReceiver';
 import { TagInputValue } from '../tag-input';
 import { TdCascaderProps } from './interface';
@@ -17,11 +16,13 @@ import { useCascaderContext } from './hooks';
 import { cascaderDefaultProps } from './defaultProps';
 import { StyledProps } from '../common';
 import useDefaultProps from '../hooks/useDefaultProps';
+import parseTNode, { parseContentTNode } from '../_util/parseTNode';
 
 export interface CascaderProps extends TdCascaderProps, StyledProps {}
 
 const Cascader: React.FC<CascaderProps> = (originalProps) => {
   const props = useDefaultProps<CascaderProps>(originalProps, cascaderDefaultProps);
+
   /**
    * global user props, config, data
    */
@@ -31,7 +32,7 @@ const Cascader: React.FC<CascaderProps> = (originalProps) => {
   const COMPONENT_NAME = `${classPrefix}-cascader`;
 
   // 拿到全局状态的上下文
-  const { cascaderContext, isFilterable } = useCascaderContext(props);
+  const { cascaderContext, isFilterable, innerValue, getCascaderItems } = useCascaderContext(props);
 
   const displayValue = useMemo(
     () => (props.multiple ? getMultipleContent(cascaderContext) : getSingleContent(cascaderContext)),
@@ -62,12 +63,64 @@ const Cascader: React.FC<CascaderProps> = (originalProps) => {
     );
   };
 
+  // render label
+  const renderLabel = () => {
+    const label = parseTNode(props.label);
+    if (props.multiple) return label;
+    if (!label) return null;
+    return <div className={`${classPrefix}-tag-input__prefix`}>{label}</div>;
+  };
+
+  // render valueDisplay
+  const valueDisplayParams = useMemo(() => {
+    const arrayValue = innerValue instanceof Array ? innerValue : [innerValue];
+    const displayValue =
+      props.multiple && props.minCollapsedNum ? arrayValue.slice(0, props.minCollapsedNum) : innerValue;
+    const options = getCascaderItems(arrayValue);
+
+    return {
+      value: innerValue,
+      selectedOptions: options,
+      onClose: (index: number) => {
+        handleRemoveTagEffect(cascaderContext, index, props.onRemove);
+      },
+      displayValue,
+    };
+  }, [cascaderContext, innerValue, props.multiple, props.minCollapsedNum, props.onRemove, getCascaderItems]);
+
+  const renderValueDisplay = () => parseContentTNode(props.valueDisplay, valueDisplayParams);
+
   const { setVisible, visible, inputVal, setInputVal } = cascaderContext;
+
+  const updateScrollTop = (content: HTMLDivElement) => {
+    const cascaderMenuList = content.querySelectorAll(`.${COMPONENT_NAME}__menu`);
+    requestAnimationFrame(() => {
+      cascaderMenuList.forEach((menu: HTMLDivElement) => {
+        const firstSelectedNode: HTMLDivElement =
+          menu?.querySelector(`.${classPrefix}-is-selected`) || menu?.querySelector(`.${classPrefix}-is-expanded`);
+        if (!firstSelectedNode || !menu) return;
+
+        const { paddingBottom } = getComputedStyle(firstSelectedNode);
+        const { marginBottom } = getComputedStyle(menu);
+        const elementBottomHeight = parseInt(paddingBottom, 10) + parseInt(marginBottom, 10);
+
+        const updateValue =
+          firstSelectedNode.offsetTop -
+          menu.offsetTop -
+          (menu.clientHeight - firstSelectedNode.clientHeight) +
+          elementBottomHeight;
+        // eslint-disable-next-line no-param-reassign
+        menu.scrollTop = updateValue;
+      });
+    });
+  };
+
   return (
     <SelectInput
       className={classNames(COMPONENT_NAME, props.className)}
       style={props.style}
       value={displayValue}
+      borderless={props.borderless}
       inputValue={visible ? inputVal : ''}
       popupVisible={visible}
       allowInput={isFilterable}
@@ -81,8 +134,11 @@ const Cascader: React.FC<CascaderProps> = (originalProps) => {
       disabled={props.disabled}
       status={props.status}
       tips={props.tips}
+      label={renderLabel()}
+      valueDisplay={renderValueDisplay()}
       suffix={props.suffix}
       suffixIcon={renderSuffixIcon()}
+      updateScrollTop={updateScrollTop}
       popupProps={{
         ...props.popupProps,
         overlayInnerStyle: panels.length && !props.loading ? { width: 'auto' } : {},
@@ -102,7 +158,7 @@ const Cascader: React.FC<CascaderProps> = (originalProps) => {
         props?.selectInputProps?.onInputChange?.(value, ctx);
       }}
       onTagChange={(val: TagInputValue, ctx) => {
-        if (ctx.trigger === 'enter') {
+        if (ctx.trigger === 'enter' || ctx.trigger === 'clear') {
           return;
         }
         handleRemoveTagEffect(cascaderContext, ctx.index, props.onRemove);
@@ -143,10 +199,14 @@ const Cascader: React.FC<CascaderProps> = (originalProps) => {
         'onClear',
       ])}
       panel={
-        <Panel
-          cascaderContext={cascaderContext}
-          {...pick(props, ['trigger', 'onChange', 'empty', 'loading', 'loadingText'])}
-        ></Panel>
+        <>
+          {props.panelTopContent && parseTNode(props.panelTopContent)}
+          <Panel
+            cascaderContext={cascaderContext}
+            {...pick(props, ['trigger', 'onChange', 'empty', 'loading', 'loadingText'])}
+          ></Panel>
+          {props.panelBottomContent && parseTNode(props.panelBottomContent)}
+        </>
       }
     />
   );

@@ -10,9 +10,9 @@ import React, {
 } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import classNames from 'classnames';
-import get from 'lodash/get';
+import { get } from 'lodash-es';
 
-import TreeNode from '../_common/js/tree/tree-node';
+import TreeNode from '../_common/js/tree-v1/tree-node';
 import { TreeOptionData, StyledProps, ComponentScrollToElementParams } from '../common';
 import { TreeItemProps } from './interface';
 import TreeItem from './TreeItem';
@@ -23,20 +23,29 @@ import { useStore } from './hooks/useStore';
 import { useTreeConfig } from './hooks/useTreeConfig';
 import { TreeDraggableContext } from './hooks/TreeDraggableContext';
 import parseTNode from '../_util/parseTNode';
-import { usePersistFn } from '../_util/usePersistFn';
+import { usePersistFn } from '../hooks/usePersistFn';
 import useTreeVirtualScroll from './hooks/useTreeVirtualScroll';
 
-import type { TreeNodeState, TreeNodeValue, TypeTreeNodeData, TypeTreeNodeModel } from '../_common/js/tree/types';
+import type { TreeNodeState, TreeNodeValue, TypeTreeNodeData, TypeTreeNodeModel } from '../_common/js/tree-v1/types';
 import type { TreeInstanceFunctions, TdTreeProps } from './type';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 export type TreeProps = TdTreeProps & StyledProps;
 
-const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>) => {
+const Tree = forwardRef<TreeInstanceFunctions<TreeOptionData>, TreeProps>((originalProps, ref) => {
   const { treeClassNames, transitionNames, transitionClassNames, transitionDuration, locale } = useTreeConfig();
+  const props = useDefaultProps<TreeProps>(originalProps, {
+    data: [],
+    expandLevel: 0,
+    icon: true,
+    line: false,
+    transition: true,
+    lazy: true,
+    valueMode: 'onlyLeaf',
+  });
 
   // 可见节点集合
   const [visibleNodes, setVisibleNodes] = useState([]);
-
   const {
     empty,
     activable,
@@ -55,9 +64,12 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
     scroll,
     className,
     style,
+    allowDrop,
+    onScroll,
   } = props;
 
-  const { value, onChange, expanded, onExpand, onActive, actived } = useControllable(props);
+  const { value, onChange, expanded, onExpand, onActive, actived, setTreeIndeterminate, indeterminate } =
+    useControllable(props);
 
   // 国际化文本初始化
   const emptyText = locale('empty');
@@ -71,6 +83,8 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
       onExpand,
       onActive,
       actived,
+      indeterminate,
+      setTreeIndeterminate,
     },
     initial,
   );
@@ -94,6 +108,21 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
       return expanded;
     },
   );
+
+  // 因为是被 useImperativeHandle 依赖的方法，使用 usePersistFn 变成持久化的。或者也可以使用 useCallback
+  const setIndeterminate = usePersistFn(
+    (
+      node: TreeNode,
+      isIndeterminate: boolean,
+      ctx: { e?: MouseEvent<HTMLDivElement>; trigger: 'node-click' | 'icon-click' | 'setItem' },
+    ) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { e, trigger } = ctx;
+      const indeterminate = node.setIndeterminate(isIndeterminate);
+      return indeterminate;
+    },
+  );
+
   const treeRef = useRef(null);
 
   const {
@@ -107,6 +136,7 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
     treeRef,
     scroll,
     data: visibleNodes,
+    onScroll,
   });
 
   const setActived = usePersistFn(
@@ -165,7 +195,7 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
           log.error('Tree', 'scrollToElement: one of `index` or `key` must exist.');
           return;
         }
-        const data = isVirtual ? visibleData : visibleNodes;
+        const data = visibleNodes;
         index = data?.findIndex((item) => [get(item.data, 'key'), get(item.data, 'value')].includes(params.key));
         if (index < 0) {
           log.error('Tree', `${params.key} does not exist in data, check \`key\` or \`data\` please.`);
@@ -173,7 +203,7 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
       }
       scrollToElement({ ...params, index });
     },
-    [scrollToElement, isVirtual, visibleData, visibleNodes],
+    [scrollToElement, visibleNodes],
   );
   /** 对外暴露的公共方法 * */
   useImperativeHandle<unknown, TreeInstanceFunctions>(
@@ -244,11 +274,17 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
             setChecked(node, spec.checked, { trigger: 'setItem' });
             delete spec.checked;
           }
+          if ('indeterminate' in options) {
+            // @ts-ignore
+            setTreeIndeterminate((prevIndeterminate: TreeNodeValue[]) => [...prevIndeterminate, value]);
+            setIndeterminate(node, spec.indeterminate, { trigger: 'setItem' });
+            delete spec.indeterminate;
+          }
           node.set(spec);
         }
       },
     }),
-    [store, setExpanded, setActived, setChecked, handleScrollToElement],
+    [store, setExpanded, setActived, setTreeIndeterminate, setChecked, setIndeterminate, handleScrollToElement],
   );
 
   /* ======== render ======= */
@@ -275,10 +311,12 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
               ref={nodeList[index]}
               key={node.value}
               node={node}
+              keys={props.keys}
               empty={empty}
               icon={icon}
               label={label}
               line={line}
+              allowDrop={allowDrop}
               transition={transition}
               expandOnClickNode={expandOnClickNode}
               activable={activable}
@@ -307,10 +345,12 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
             <TreeItem
               ref={nodeList[index]}
               node={node}
+              keys={props.keys}
               empty={empty}
               icon={icon}
               label={label}
               line={line}
+              allowDrop={allowDrop}
               transition={transition}
               expandOnClickNode={expandOnClickNode}
               activable={activable}
@@ -362,15 +402,5 @@ const Tree = forwardRef((props: TreeProps, ref: React.Ref<TreeInstanceFunctions>
 });
 
 Tree.displayName = 'Tree';
-
-Tree.defaultProps = {
-  data: [],
-  expandLevel: 0,
-  icon: true,
-  line: false,
-  transition: true,
-  lazy: true,
-  valueMode: 'onlyLeaf',
-};
 
 export default Tree;

@@ -1,15 +1,17 @@
-import React, { ReactNode, useState, useRef, useEffect } from 'react';
+import React, { ReactNode, useState, useRef, useEffect, useCallback } from 'react';
 import classnames from 'classnames';
 import { CSSTransition } from 'react-transition-group';
+import { throttle } from 'lodash-es';
 import { StyledProps } from '../common';
-import useSwitch from '../_util/useSwitch';
-import useAnimation from '../_util/useAnimation';
+import useSwitch from '../hooks/useSwitch';
+import useAnimation from '../hooks/useAnimation';
 import Portal from '../common/Portal';
 import useConfig from '../hooks/useConfig';
 import getPosition from '../_common/js/utils/getPosition';
 import { TdTooltipLiteProps } from './type';
 import { tooltipLiteDefaultProps } from './defaultProps';
 import { getTransitionParams } from '../popup/utils/transition';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 export interface TooltipLiteProps extends TdTooltipLiteProps, StyledProps {
   children?: ReactNode;
@@ -17,7 +19,8 @@ export interface TooltipLiteProps extends TdTooltipLiteProps, StyledProps {
 
 const DEFAULT_TRANSITION_TIMEOUT = 180;
 
-const TooltipLite: React.FC<TooltipLiteProps> = (props) => {
+const TooltipLite: React.FC<TooltipLiteProps> = (originalProps) => {
+  const props = useDefaultProps<TooltipLiteProps>(originalProps, tooltipLiteDefaultProps);
   const { style, className, placement, showArrow, theme, children, triggerElement, content, showShadow } = props;
   const triggerRef = useRef(null);
   const contentRef = useRef(null);
@@ -25,26 +28,39 @@ const TooltipLite: React.FC<TooltipLiteProps> = (props) => {
   const { classPrefix } = useConfig();
   const [hover, hoverAction] = useSwitch();
   const [clientX, setHoverClientX] = useState(0);
+  const [clientY, setHoverClientY] = useState(0);
   const [position, setPosition] = useState(null);
   const { keepFade } = useAnimation();
 
   useEffect(() => {
     if (triggerRef.current && contentRef.current) {
-      setPosition(getPosition(triggerRef.current, contentRef.current, placement, clientX));
+      setPosition(getPosition(triggerRef.current, contentRef.current, placement, clientX, clientY));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerRef.current, contentRef.current, placement, hover]);
+  }, [triggerRef.current, contentRef.current, placement, hover, clientX, clientY]);
+
+  const updatePosition = (e: MouseEvent) => {
+    setHoverClientX(e.clientX);
+    setHoverClientY(e.clientY);
+  };
 
   const onSwitchHover = (action: String, e: MouseEvent) => {
-    setHoverClientX(e.clientX);
+    updatePosition(e);
     hoverAction.set(action === 'on');
   };
 
   const showTipArrow = showArrow && placement !== 'mouse';
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const onSwitchMove = useCallback(
+    throttle((e) => updatePosition(e), 16.7, { trailing: true }),
+    [],
+  );
+
   const getTriggerChildren = (children) => {
     const appendProps = {
       ref: triggerRef,
+      onMouseMove: onSwitchMove,
       onMouseEnter: (e) => onSwitchHover('on', e),
       onMouseLeave: (e) => onSwitchHover('off', e),
     };
@@ -108,6 +124,5 @@ const TooltipLite: React.FC<TooltipLiteProps> = (props) => {
 };
 
 TooltipLite.displayName = 'Tooltiplite';
-TooltipLite.defaultProps = tooltipLiteDefaultProps;
 
 export default React.memo(TooltipLite);

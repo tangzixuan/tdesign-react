@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, forwardRef, ElementRef, useImperativeHandle } from 'react';
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import classNames from 'classnames';
 import type { TdTreeSelectProps, TreeSelectValue } from './type';
 import type { StyledProps, TreeOptionData } from '../common';
@@ -7,15 +7,18 @@ import useConfig from '../hooks/useConfig';
 import useControlled from '../hooks/useControlled';
 import Tree, { TreeProps } from '../tree';
 import SelectInput, { SelectInputProps } from '../select-input/SelectInput';
-import { usePersistFn } from '../_util/usePersistFn';
-import useSwitch from '../_util/useSwitch';
+import { usePersistFn } from '../hooks/usePersistFn';
+import useSwitch from '../hooks/useSwitch';
 import noop from '../_util/noop';
-import { useTreeSelectUtils } from './useTreeSelectUtils';
+import { useTreeSelectUtils } from './hooks/useTreeSelectUtils';
 import { SelectArrow } from './SelectArrow';
-import { useTreeSelectPassThroughProps } from './useTreeSelectPassthoughProps';
-import { useTreeSelectLocale } from './useTreeSelectLocale';
+import { useTreeSelectPassThroughProps } from './hooks/useTreeSelectPassthroughProps';
+import { useTreeSelectLocale } from './hooks/useTreeSelectLocale';
 import { treeSelectDefaultProps } from './defaultProps';
 import parseTNode from '../_util/parseTNode';
+import useDefaultProps from '../hooks/useDefaultProps';
+import { PopupRef } from '../popup';
+import { InputRef } from '../input';
 
 export interface TreeSelectProps<DataOption extends TreeOptionData = TreeOptionData>
   extends TdTreeSelectProps<DataOption>,
@@ -29,7 +32,10 @@ export interface NodeOptions {
 const useMergeFn = <T extends any[]>(...fns: Array<(...args: T) => void>) =>
   usePersistFn((...args: T) => fns.forEach((fn) => fn?.(...args)));
 
-const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
+type TreeSelectRefType = Partial<ElementRef<typeof Tree> & PopupRef & InputRef>;
+
+const TreeSelect = forwardRef<TreeSelectRefType, TreeSelectProps>((originalProps, ref) => {
+  const props = useDefaultProps<TreeSelectProps<TreeOptionData>>(originalProps, treeSelectDefaultProps);
   /* ---------------------------------config---------------------------------------- */
 
   // 国际化文本初始化
@@ -59,10 +65,12 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
     treeProps,
     inputProps,
     valueType,
+    collapsedItems,
     onBlur,
     onFocus,
     onSearch,
     onRemove,
+    onEnter,
   } = props;
 
   const selectInputProps = useTreeSelectPassThroughProps(props);
@@ -72,7 +80,7 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
   const [filterInput, setFilterInput] = useControlled(props, 'inputValue', onInputChange);
 
   const treeRef = useRef<ElementRef<typeof Tree>>();
-  const selectInputRef = useRef();
+  const selectInputRef = useRef<Partial<PopupRef & InputRef>>();
 
   const tKeys = useMemo(
     () => ({
@@ -84,7 +92,19 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
     [props.keys],
   );
 
-  const { normalizeValue, formatValue, getNodeItem } = useTreeSelectUtils(props, treeRef);
+  const passThroughDefaultStore = useMemo<TreeSelectProps>(
+    () => ({
+      data,
+      treeProps: {
+        keys: tKeys,
+        ...treeProps,
+      },
+      valueType,
+    }),
+    [tKeys, data, treeProps, valueType],
+  );
+
+  const { normalizeValue, formatValue, getNodeItem } = useTreeSelectUtils(passThroughDefaultStore, treeRef);
 
   useImperativeHandle(ref, () => ({
     ...(selectInputRef.current || {}),
@@ -249,6 +269,7 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
 
   const handleEnter = usePersistFn<SelectInputProps['onEnter']>((_, ctx) => {
     onSearch?.(ctx.inputValue, { e: ctx.e });
+    onEnter?.({ inputValue: ctx.inputValue, e: ctx.e, value: getTreeSelectEventValue() });
   });
 
   const handleFilterChange = usePersistFn<SelectInputProps['onInputChange']>((value, ctx) => {
@@ -274,7 +295,7 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
           data={data}
           disabled={disabled}
           empty={empty}
-          expandOnClickNode={true}
+          expandOnClickNode={false}
           allowFoldNodeOnFilter
           keys={tKeys}
           {...(multiple
@@ -294,21 +315,6 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
       </>
     );
   };
-
-  const renderCollapsedItems = useMemo(
-    () =>
-      props.collapsedItems
-        ? () =>
-            isFunction(props.collapsedItems)
-              ? props.collapsedItems({
-                  value: normalizedValue,
-                  collapsedSelectedItems: normalizedValue.slice(props.minCollapsedNum, normalizedValue.length),
-                  count: normalizedValue.length - props.minCollapsedNum,
-                })
-              : props.collapsedItems
-        : null,
-    [normalizedValue, props],
-  );
 
   return (
     <SelectInput
@@ -336,11 +342,12 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
       onMouseenter={hoverAction.on}
       onMouseleave={hoverAction.off}
       suffixIcon={
-        readonly ? null : (
+        props.suffixIcon ||
+        (readonly ? null : (
           <SelectArrow isActive={popupVisible} isHighlight={hover || popupVisible} disabled={disabled} />
-        )
+        ))
       }
-      collapsedItems={renderCollapsedItems}
+      collapsedItems={collapsedItems}
       label={parseTNode(prefixIcon)}
       valueDisplay={internalInputValueDisplay}
     />
@@ -348,6 +355,5 @@ const TreeSelect = forwardRef((props: TreeSelectProps, ref) => {
 });
 
 TreeSelect.displayName = 'TreeSelect';
-TreeSelect.defaultProps = treeSelectDefaultProps;
 
 export default TreeSelect;

@@ -36,13 +36,41 @@ export const styleContent = `
   }
 `;
 
+export const tsconfigContent = `{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src"
+  ]
+}
+`;
+
 export const pkgContent = JSON.stringify(
   {
     name: 'tdesign-react-demo',
     version: '1.0.0',
     description: 'React example starter project',
     keywords: ['react', 'starter'],
-    main: 'src/main.jsx',
+    main: 'src/main.tsx',
     dependencies: {
       dayjs: orgPkg.dependencies.dayjs,
       react: orgPkg.devDependencies.react,
@@ -50,9 +78,13 @@ export const pkgContent = JSON.stringify(
       'tdesign-react': orgPkg.version,
       'tdesign-icons-react': orgPkg.dependencies['tdesign-icons-react'],
       'react-scripts': '^5.0.0',
+      '@types/react': orgPkg.devDependencies['@types/react'],
+      '@types/react-dom': orgPkg.devDependencies['@types/react-dom'],
+      'lodash-es': orgPkg.dependencies['lodash-es'],
     },
     devDependencies: {
       typescript: '^4.4.4',
+      '@types/lodash-es': orgPkg.devDependencies['@types/lodash-es'],
     },
     scripts: {
       start: 'react-scripts start',

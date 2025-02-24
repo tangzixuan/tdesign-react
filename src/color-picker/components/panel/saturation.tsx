@@ -1,7 +1,10 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { SATURATION_PANEL_DEFAULT_HEIGHT, SATURATION_PANEL_DEFAULT_WIDTH } from '../../const';
+import {
+  SATURATION_PANEL_DEFAULT_HEIGHT,
+  SATURATION_PANEL_DEFAULT_WIDTH,
+} from '../../../_common/js/color-picker/constants';
 import { TdColorBaseProps } from '../../interface';
-import useDrag, { Coordinate } from '../../../_util/useDrag';
+import useDrag, { Coordinate } from '../../../hooks/useDrag';
 
 const Saturation = (props: TdColorBaseProps) => {
   const { color, disabled, onChange, baseClassName } = props;

@@ -1,13 +1,15 @@
 :: BASE_DOC ::
 
 ## API
+
 ### RangeInput Props
 
-名称 | 类型 | 默认值 | 说明 | 必传
+名称 | 类型 | 默认值 | 描述 | 必传
 -- | -- | -- | -- | --
 className | String | - | 类名 | N
 style | Object | - | 样式，TS 类型：`React.CSSProperties` | N
 activeIndex | Number | - | 输入框高亮状态序号 | N
+borderless | Boolean | false | 无边框模式 | N
 clearable | Boolean | false | 是否可清空 | N
 disabled | Boolean | - | 是否禁用范围输入框 | N
 format | Array / Function | - | 指定输入框展示值的格式。TS 类型：`InputFormatType \| Array<InputFormatType>` | N
@@ -44,9 +46,10 @@ blur | `(options?: {position?: RangeInputPosition})` | \- | 使其中一个输�
 focus | `(options?: {position?: RangeInputPosition})` | \- | 使其中一个输入框获得焦点
 select | `(options?: {position?: RangeInputPosition})` | \- | 使其中一个输入框选中内容
 
+
 ### RangeInputPopup Props
 
-名称 | 类型 | 默认值 | 说明 | 必传
+名称 | 类型 | 默认值 | 描述 | 必传
 -- | -- | -- | -- | --
 className | String | - | 类名 | N
 style | Object | - | 样式，TS 类型：`React.CSSProperties` | N
@@ -54,6 +57,7 @@ autoWidth | Boolean | false | 宽度随内容自适应 | N
 disabled | Boolean | - | 是否禁用范围输入框，值为数组表示可分别控制某一个输入框是否禁用 | N
 inputValue | Array | - | 输入框的值。TS 类型：`RangeInputValue` | N
 defaultInputValue | Array | - | 输入框的值。非受控属性。TS 类型：`RangeInputValue` | N
+label | TNode | - | 左侧文本。TS 类型：`string \| TNode`。[通用类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/common.ts) | N
 panel | TNode | - | 下拉框内容，可完全自定义。TS 类型：`string \| TNode`。[通用类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/common.ts) | N
 popupProps | Object | - | 透传 Popup 浮层组件全部属性。TS 类型：`PopupProps`，[Popup API Documents](./popup?tab=api)。[详细类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/range-input/type.ts) | N
 popupVisible | Boolean | - | 是否显示下拉框 | N

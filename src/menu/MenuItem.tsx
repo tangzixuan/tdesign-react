@@ -2,7 +2,7 @@ import React, { FC, useContext } from 'react';
 import classNames from 'classnames';
 import useConfig from '../hooks/useConfig';
 import useDomRefCallback from '../hooks/useDomRefCallback';
-import useRipple from '../_util/useRipple';
+import useRipple from '../hooks/useRipple';
 import { TdMenuItemProps } from './type';
 import { StyledProps } from '../common';
 import { MenuContext } from './MenuContext';
@@ -67,7 +67,7 @@ const MenuItem: FC<MenuItemProps> = (props) => {
   // 菜单收起，且只有本身为一级菜单才需要显示 tooltip
   if (collapsed && !disabled && !/submenu/i.test(className)) {
     return (
-      <TooltipLite content={children} placement="right">
+      <TooltipLite content={children} placement="right" {...props.tooltipProps}>
         {liContent}
       </TooltipLite>
     );

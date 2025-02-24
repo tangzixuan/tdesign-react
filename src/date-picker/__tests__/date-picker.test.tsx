@@ -1,4 +1,3 @@
-import MockDate from 'mockdate';
 import React from 'react';
 import dayjs from 'dayjs';
 import { BrowseIcon, LockOnIcon } from 'tdesign-icons-react';
@@ -7,16 +6,24 @@ import { render, fireEvent, waitFor, vi } from '@test/utils';
 
 import DatePicker from '..';
 import type { DateValue } from '../type';
-// 固定时间，当使用 new Date() 时，返回固定时间，防止“当前时间”的副作用影响，导致 snapshot 变更，mockdate 插件见 https://github.com/boblauer/MockDate
-MockDate.set('2022-08-27');
+
+const disableTime = (time: Date) => {
+  if (dayjs(time).format('YYYY-MM-DD') === dayjs('2024-11-26').format('YYYY-MM-DD')) {
+    return {
+      hour: [0, 1, 2, 3, 4, 5, 6],
+    };
+  }
+  return {};
+};
 
 describe('DatePicker', () => {
   beforeEach(() => {
-    MockDate.set('2022-08-27');
+    const mockDate = new Date(2022, 7, 27);
+    vi.setSystemTime(mockDate);
   });
 
   afterEach(() => {
-    MockDate.reset();
+    vi.useRealTimers();
   });
 
   test('clearable', async () => {
@@ -177,6 +184,14 @@ describe('DatePicker', () => {
     expect(queryByText(tips)).toBeInTheDocument();
   });
 
+  test('label', async () => {
+    const label = 'test-label';
+    const { container } = render(<DatePicker label={label} />);
+    const prefix = container.querySelector('.t-input__prefix');
+    expect(prefix).toBeTruthy();
+    expect(prefix).toHaveTextContent(label);
+  });
+
   test('onBlur onFocus', async () => {
     const blurFn = vi.fn();
     const focusFn = vi.fn();
@@ -327,5 +342,16 @@ describe('DatePicker', () => {
 
     const monthSelect = await waitFor(() => document.querySelector('.t-date-picker__header-controller-month'));
     fireEvent.click(monthSelect);
+  });
+
+  test('disableTime', async () => {
+    const { container } = render(<DatePicker value="2024-11-26 07:00:00" enableTimePicker disableTime={disableTime} />);
+
+    fireEvent.mouseDown(container.querySelector('input'));
+
+    await waitFor(() => {
+      expect(document.querySelector('.t-date-picker__cell--active')?.firstChild?.firstChild).toHaveTextContent('26');
+      expect(document.querySelectorAll('.t-time-picker__panel-body-scroll')[0].children).toHaveLength(17);
+    });
   });
 });

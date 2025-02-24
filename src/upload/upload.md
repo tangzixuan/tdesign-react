@@ -27,12 +27,13 @@ format | Function | - | 转换文件 `UploadFile` 的数据结构，可新增或
 formatRequest | Function | - | 用于新增或修改文件上传请求 参数。`action` 存在时有效。一个请求上传一个文件时，默认请求字段有 `file`。<br/>一个请求上传多个文件时，默认字段有 `file[0]/file[1]/file[2]/.../length`，其中 `length` 表示本次上传的文件数量。<br/>⚠️非常注意，此处的 `file[0]/file[1]` 仅仅是一个字段名，并非表示 `file` 是一个数组，接口获取字段时注意区分。<br/>可以使用 `name` 定义 `file` 字段的别名。<br/>也可以使用 `formatRequest` 自定义任意字段，如添加一个字段 `fileList` ，存储文件数组。TS 类型：`(requestData: { [key: string]: any }) => { [key: string]: any }` | N
 formatResponse | Function | - | 用于格式化文件上传后的接口响应数据，`response` 便是接口响应的原始数据。`action` 存在时有效。<br/> 示例返回值：`{ error, url, status, files }` <br/> 此函数的返回值 `error` 会作为错误文本提醒，表示上传失败的原因，如果存在会判定为本次上传失败。<br/> 此函数的返回值 `url` 会作为单个文件上传成功后的链接。<br/> `files` 表示一个请求同时上传多个文件后的文件列表。TS 类型：`(response: any, context: FormatResponseContext) => ResponseType ` `type ResponseType = { error?: string; url?: string; status?: 'fail' \| 'success'; files?: UploadFile[] } & Record<string, any>` `interface FormatResponseContext { file: UploadFile; currentFiles?: UploadFile[] }`。[详细类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 headers | Object | - | 设置上传的请求头部，`action` 存在时有效。TS 类型：`{[key: string]: string}` | N
+imageProps | Object | - | 用于在上传图片场景下，透传属性配置至 Image 组件 | N
 imageViewerProps | Object | - | 透传图片预览组件全部属性。TS 类型：`ImageViewerProps`，[ImageViewer API Documents](./image-viewer?tab=api)。[详细类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 inputAttributes | Object | - | 用于添加属性到 HTML 元素 `input`。TS 类型：`CSSProperties` | N
 isBatchUpload | Boolean | false | 多个文件是否作为一个独立文件包，整体替换，整体删除。不允许追加文件，只允许替换文件。`theme=file-flow` 时有效 | N
 locale | Object | - | 上传组件文本语言配置，支持自定义配置组件中的全部文本。优先级高于全局配置中语言。TS 类型：`UploadConfig` `import { UploadConfig } from '../config-provider/type'`。[详细类型定义](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 max | Number | 0 | 用于控制文件上传数量，值为 0 则不限制。注意，单文件上传场景，请勿设置 `max` 属性 | N
-method | String | POST | HTTP 请求类型。可选项：POST/GET/PUT/OPTION/PATCH/post/get/put/option/patch | N
+method | String | POST | HTTP 请求类型。可选项：POST/GET/PUT/OPTIONS/PATCH/post/get/put/options/patch | N
 mockProgressDuration | Number | - | 模拟进度间隔时间，单位：毫秒，默认：300。由于原始的上传请求，小文件上传进度只有 0 和 100，故而新增模拟进度，每间隔 `mockProgressDuration` 毫秒刷新一次模拟进度。小文件设置小一点，大文件设置大一点。注意：当 `useMockProgress` 为真时，当前设置有效 | N
 multiple | Boolean | false | 支持多文件上传 | N
 name | String | file | 文件上传时的名称 | N

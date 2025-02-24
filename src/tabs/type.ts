@@ -9,6 +9,10 @@ import { MouseEvent } from 'react';
 
 export interface TdTabsProps {
   /**
+   * 选项卡右侧的操作区域
+   */
+  action?: TNode;
+  /**
    * 选项卡是否可增加
    * @default false
    */
@@ -32,6 +36,11 @@ export interface TdTabsProps {
    * @default top
    */
   placement?: 'left' | 'top' | 'bottom' | 'right';
+  /**
+   * Tab较多的时候，选中滑块滚动最终停留的位置
+   * @default auto
+   */
+  scrollPosition?: 'auto' | 'start' | 'center' | 'end';
   /**
    * 组件尺寸
    * @default medium
@@ -80,9 +89,19 @@ export interface TdTabPanelProps {
    */
   disabled?: boolean;
   /**
+   * 选项卡组件开启允许拖动排序时，当前选项卡是否允许拖动
+   * @default true
+   */
+  draggable?: boolean;
+  /**
    * 选项卡名称，可自定义选项卡导航内容
    */
   label?: TNode;
+  /**
+   * 是否启用选项卡懒加载
+   * @default false
+   */
+  lazy?: boolean;
   /**
    * 用于自定义选项卡面板内容
    */

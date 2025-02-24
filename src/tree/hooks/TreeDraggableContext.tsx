@@ -1,8 +1,10 @@
 import { useRef, DragEvent } from 'react';
-import TreeStore from '../../_common/js/tree/tree-store';
-import TreeNode from '../../_common/js/tree/tree-node';
+import TreeStore from '../../_common/js/tree-v1/tree-store';
+import TreeNode from '../../_common/js/tree-v1/tree-node';
 import { TreeProps } from '../Tree';
 import { createHookContext } from '../../_util/createHookContext';
+
+import type { TdTreeProps } from '../type';
 
 interface Value {
   props: TreeProps;
@@ -44,7 +46,12 @@ export const TreeDraggableContext = createHookContext((value: Value) => {
     });
   };
 
-  const onDrop = (context: { node: TreeNode; dropPosition: number; e: DragEvent<HTMLDivElement> }) => {
+  const onDrop = (context: {
+    node: TreeNode;
+    dropPosition: number;
+    e: DragEvent<HTMLDivElement>;
+    allowDrop?: TdTreeProps['allowDrop'];
+  }) => {
     const { node, dropPosition } = context;
     if (
       node.value === dragNode.current?.value ||
@@ -52,6 +59,15 @@ export const TreeDraggableContext = createHookContext((value: Value) => {
     ) {
       return;
     }
+    const ctx = {
+      dropNode: node.getModel(),
+      dragNode: dragNode.current.getModel(),
+      dropPosition,
+      e: context.e,
+    };
+
+    if (props.allowDrop?.(ctx) === false) return;
+
     const nodes = store.getNodes() as TreeNode[];
     nodes.some((_node) => {
       if (_node.value === node.value) {

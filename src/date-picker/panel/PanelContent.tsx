@@ -5,6 +5,7 @@ import { TimePickerPanel } from '../../time-picker';
 import type { SinglePanelProps } from './SinglePanel';
 import type { RangePanelProps } from './RangePanel';
 import useConfig from '../../hooks/useConfig';
+import useEventCallback from '../../hooks/useEventCallback';
 import { getDefaultFormat } from '../../_common/js/date-picker/format';
 
 export interface PanelContentProps {
@@ -18,7 +19,7 @@ export interface PanelContentProps {
   timePickerProps: SinglePanelProps['timePickerProps'];
   firstDayOfWeek: SinglePanelProps['firstDayOfWeek'];
   time: SinglePanelProps['time'];
-
+  multiple?: SinglePanelProps['multiple'];
   popupVisible?: boolean;
   tableData: any[];
   onMonthChange: SinglePanelProps['onMonthChange'] | RangePanelProps['onMonthChange'];
@@ -47,14 +48,15 @@ export default function PanelContent(props: PanelContentProps) {
     partial = 'start',
     time,
     tableData,
-    onMonthChange,
-    onYearChange,
     onJumperClick,
     onCellClick,
     onCellMouseEnter,
     onCellMouseLeave,
     onTimePickerChange,
   } = props;
+
+  const onMonthChange = useEventCallback(props.onMonthChange);
+  const onYearChange = useEventCallback(props.onYearChange);
 
   const { timeFormat } = getDefaultFormat({ mode, format, enableTimePicker });
 
@@ -66,16 +68,14 @@ export default function PanelContent(props: PanelContentProps) {
     (val: number) => {
       onMonthChange?.(val, { partial });
     },
-    // eslint-disable-next-line
-    [partial],
+    [partial, onMonthChange],
   );
 
   const onYearChangeInner = useCallback(
     (val: number) => {
       onYearChange?.(val, { partial });
     },
-    // eslint-disable-next-line
-    [partial],
+    [partial, onYearChange],
   );
 
   const onJumperClickInner = useCallback(
@@ -104,6 +104,7 @@ export default function PanelContent(props: PanelContentProps) {
           time={time}
           format={format}
           firstDayOfWeek={firstDayOfWeek}
+          multiple={props.multiple}
           onCellClick={(date: Date, { e }) => onCellClick?.(date, { e, partial })}
           onCellMouseEnter={(date: Date) => onCellMouseEnter?.(date, { partial })}
           onCellMouseLeave={onCellMouseLeave}
@@ -115,6 +116,7 @@ export default function PanelContent(props: PanelContentProps) {
           <div className={`${panelName}-time-viewer`}>{time || defaultTime}</div>
           <TimePickerPanel
             key={partial}
+            position={partial}
             format={timeFormat}
             value={time || defaultTime}
             onChange={onTimePickerChange}

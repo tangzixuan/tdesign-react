@@ -1,10 +1,19 @@
-import React, { useRef, useMemo, useImperativeHandle, forwardRef, useEffect, useState, WheelEvent } from 'react';
-import pick from 'lodash/pick';
+import React, {
+  useRef,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+  useState,
+  WheelEvent,
+  RefAttributes,
+} from 'react';
+import { pick } from 'lodash-es';
 import classNames from 'classnames';
 import TBody, { extendTableProps, TableBodyProps } from './TBody';
-import { Affix } from '../affix';
+import { Affix, AffixRef } from '../affix';
 import { ROW_LISTENERS } from './TR';
-import THead from './THead';
+import THead, { TheadProps } from './THead';
 import TFoot from './TFoot';
 import useTableHeader from './hooks/useTableHeader';
 import useColumnResize from './hooks/useColumnResize';
@@ -23,6 +32,7 @@ import { TableRowData } from './type';
 import useVirtualScroll from '../hooks/useVirtualScroll';
 import { getIEVersion } from '../_common/js/utils/helper';
 import log from '../_common/js/log';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 export const BASE_TABLE_EVENTS = ['page-change', 'cell-click', 'scroll', 'scrollX', 'scrollY'];
 export const BASE_TABLE_ALL_EVENTS = ROW_LISTENERS.map((t) => `row-${t}`).concat(BASE_TABLE_EVENTS);
@@ -31,7 +41,8 @@ export interface TableListeners {
   [key: string]: Function;
 }
 
-const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
+const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((originalProps, ref) => {
+  const props = useDefaultProps<BaseTableProps<TableRowData>>(originalProps, baseTableDefaultProps);
   const {
     showHeader = true,
     tableLayout,
@@ -61,6 +72,26 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
     [spansAndLeafNodes?.leafColumns, columns],
   );
 
+  const { showElement } = useElementLazyRender(tableRef, lazyLoad);
+  const paginationAffixRef = useRef<AffixRef>();
+  const horizontalScrollAffixRef = useRef<AffixRef>();
+  const headerTopAffixRef = useRef<AffixRef>();
+  const footerBottomAffixRef = useRef<AffixRef>();
+
+  // 1. 表头吸顶；2. 表尾吸底；3. 底部滚动条吸底；4. 分页器吸底
+  const {
+    affixHeaderRef,
+    affixFooterRef,
+    horizontalScrollbarRef,
+    paginationRef,
+    showAffixHeader,
+    showAffixFooter,
+    showAffixPagination,
+    onHorizontalScroll,
+    setTableContentRef,
+    updateAffixHeaderOrFooter,
+  } = useAffix(props, { showElement });
+
   // 固定表头和固定列逻辑
   const {
     scrollbarWidth,
@@ -83,23 +114,16 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
     updateThWidthList,
     addTableResizeObserver,
     updateTableAfterColumnResize,
-  } = useFixed(props, finalColumns);
-
-  const { showElement } = useElementLazyRender(tableRef, lazyLoad);
-
-  // 1. 表头吸顶；2. 表尾吸底；3. 底部滚动条吸底；4. 分页器吸底
-  const {
-    affixHeaderRef,
-    affixFooterRef,
-    horizontalScrollbarRef,
-    paginationRef,
-    showAffixHeader,
-    showAffixFooter,
-    showAffixPagination,
-    onHorizontalScroll,
-    setTableContentRef,
-    updateAffixHeaderOrFooter,
-  } = useAffix(props, { showElement });
+  } = useFixed(
+    props,
+    finalColumns,
+    // {
+    //   paginationAffixRef,
+    //   horizontalScrollAffixRef,
+    //   headerTopAffixRef,
+    //   footerBottomAffixRef,
+    // }
+  );
 
   const { dataSource, innerPagination, isPaginateData, renderPagination } = usePagination(props);
 
@@ -183,7 +207,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
   const onInnerVirtualScroll = (e: WheelEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const top = target.scrollTop;
-    // 排除横向滚动出发的纵向虚拟滚动计算
+    // 排除横向滚动触发的纵向虚拟滚动计算
     if (lastScrollY !== top) {
       virtualConfig.isVirtualScroll && virtualConfig.handleScroll();
     } else {
@@ -271,7 +295,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
       })}
     </colgroup>
   );
-  const headProps = {
+  const headProps: TheadProps = {
     isFixedHeader,
     rowAndColFixedPosition,
     isMultipleHeader,
@@ -365,6 +389,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
         <Affix
           offsetTop={0}
           {...getAffixProps(props.headerAffixedTop, props.headerAffixProps)}
+          ref={headerTopAffixRef}
           onFixedChange={onFixedChange}
         >
           {renderFixedHeader()}
@@ -390,6 +415,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
         onFixedChange={onFixedChange}
         offsetBottom={marginScrollbarWidth || 0}
         {...getAffixProps(props.footerAffixedBottom)}
+        ref={footerBottomAffixRef}
         style={{ marginTop: `${-1 * (tableFootHeight + marginScrollbarWidth)}px` }}
       >
         <div
@@ -639,6 +665,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
     <Affix
       offsetBottom={0}
       {...getAffixProps(props.horizontalScrollAffixedBottom)}
+      ref={horizontalScrollAffixRef}
       style={{ marginTop: `-${scrollbarWidth * 2}px` }}
     >
       <div
@@ -656,7 +683,7 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
   );
 
   const affixedPaginationContent = props.paginationAffixedBottom ? (
-    <Affix offsetBottom={0} {...getAffixProps(props.paginationAffixedBottom)}>
+    <Affix offsetBottom={0} {...getAffixProps(props.paginationAffixedBottom)} ref={paginationAffixRef}>
       {paginationNode}
     </Affix>
   ) : (
@@ -711,10 +738,6 @@ const BaseTable = forwardRef<BaseTableRef, BaseTableProps>((props, ref) => {
 
 BaseTable.displayName = 'BaseTable';
 
-BaseTable.defaultProps = baseTableDefaultProps;
-
 export default BaseTable as <T extends TableRowData = TableRowData>(
-  props: BaseTableProps<T> & {
-    ref?: React.Ref<BaseTableRef>;
-  },
+  props: BaseTableProps<T> & RefAttributes<BaseTableRef>,
 ) => React.ReactElement;

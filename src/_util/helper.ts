@@ -1,4 +1,4 @@
-import camelCase from 'lodash/camelCase';
+import { camelCase } from 'lodash-es';
 
 export function omit(obj: object, fields: string[]): object {
   const shallowCopy = {
@@ -70,4 +70,21 @@ export function getPropsApiByEvent(eventName: string) {
  */
 export function pxCompat(param: string | number) {
   return typeof param === 'number' ? `${param}px` : param;
+}
+
+/**
+ * 获取元素相对于容器(祖先)的偏移量
+ * @param element 目标元素
+ * @param container 容器元素
+ * @returns 相对于容器的偏移量
+ */
+export function getOffsetTopToContainer(element: HTMLElement, container: HTMLElement) {
+  let { offsetTop } = element;
+
+  let current = element.offsetParent as HTMLElement;
+  while (current && current !== container) {
+    offsetTop += current.offsetTop;
+    current = current.offsetParent as HTMLElement;
+  }
+  return offsetTop;
 }

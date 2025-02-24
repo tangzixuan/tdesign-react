@@ -9,6 +9,7 @@ import { UploadConfig } from '../config-provider/type';
 import { ButtonProps } from '../button';
 import { PlainObject, TNode, UploadDisplayDragEvents } from '../common';
 import { CSSProperties, MouseEvent, DragEvent } from 'react';
+import { ImageProps } from '../image';
 
 export interface TdUploadProps<T extends UploadFile = UploadFile> {
   /**
@@ -101,6 +102,10 @@ export interface TdUploadProps<T extends UploadFile = UploadFile> {
    */
   headers?: { [key: string]: string };
   /**
+   * 用于在上传图片场景下，透传属性配置至 Image 组件
+   */
+  imageProps?: ImageProps;
+  /**
    * 透传图片预览组件全部属性
    */
   imageViewerProps?: ImageViewerProps;
@@ -126,7 +131,7 @@ export interface TdUploadProps<T extends UploadFile = UploadFile> {
    * HTTP 请求类型
    * @default POST
    */
-  method?: 'POST' | 'GET' | 'PUT' | 'OPTION' | 'PATCH' | 'post' | 'get' | 'put' | 'option' | 'patch';
+  method?: 'POST' | 'GET' | 'PUT' | 'OPTIONS' | 'PATCH' | 'post' | 'get' | 'put' | 'options' | 'patch';
   /**
    * 模拟进度间隔时间，单位：毫秒，默认：300。由于原始的上传请求，小文件上传进度只有 0 和 100，故而新增模拟进度，每间隔 `mockProgressDuration` 毫秒刷新一次模拟进度。小文件设置小一点，大文件设置大一点。注意：当 `useMockProgress` 为真时，当前设置有效
    */

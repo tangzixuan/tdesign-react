@@ -1,6 +1,4 @@
-import isNumber from 'lodash/isNumber';
-import isFunction from 'lodash/isFunction';
-import cloneDeep from 'lodash/cloneDeep';
+import { isNumber , isFunction , cloneDeep } from 'lodash-es';
 import { TreeNode, CascaderContextType, TdCascaderProps, TreeNodeValue, TreeNodeModel } from '../interface';
 import { getFullPathLabel, getTreeValue } from './helper';
 
@@ -24,7 +22,7 @@ export function expendClickEffect(
 
   if (isDisabled) return;
   // 点击展开节点，设置展开状态
-  if (propsTrigger === trigger) {
+  if (propsTrigger === trigger && node.children !== null) {
     const expanded = node.setExpanded(true);
     treeStore.refreshNodes();
     treeStore.replaceExpanded(expanded);
@@ -45,7 +43,8 @@ export function expendClickEffect(
     // 非受控状态下更新状态
     setValue(valueType === 'single' ? value : node.getPath().map((item) => item.value), 'check', node.getModel());
 
-    if (!checkStrictly) {
+    // 当 trigger 为 hover 时 ，点击节点一定是关闭 panel 的操作
+    if (!checkStrictly || propsTrigger === 'hover') {
       setVisible(false, {});
     }
   }
@@ -143,22 +142,21 @@ export function handleRemoveTagEffect(
   const newValue = cloneDeep(value) as [];
   const res = newValue.splice(index, 1);
   const node = treeStore.getNodes(res[0])[0];
-
-  setValue(newValue, 'uncheck', node.getModel());
-
   const checked = node.setChecked(!node.isChecked());
-  // 处理不同数据类型
-  const resValue =
-    valueType === 'single'
-      ? checked
-      : checked.map((val) =>
-          treeStore
-            .getNode(val)
-            .getPath()
-            .map((item) => item.value),
-        );
 
-  setValue(resValue, 'uncheck', node.getModel());
+  if (valueType === 'single') {
+    setValue(newValue, 'uncheck', node.getModel());
+  } else {
+    // 处理不同数据类型
+    const resValue = checked.map((val) =>
+      treeStore
+        .getNode(val)
+        .getPath()
+        .map((item) => item.value),
+    );
+    setValue(resValue, 'uncheck', node.getModel());
+  }
+
   if (isFunction(onRemove)) {
     onRemove({ value: checked, node: node as any });
   }
@@ -176,12 +174,13 @@ export const treeNodesEffect = (
   treeStore: CascaderContextType['treeStore'],
   setTreeNodes: CascaderContextType['setTreeNodes'],
   filter: CascaderContextType['filter'],
+  checkStrictly: CascaderContextType['checkStrictly'],
 ) => {
   if (!treeStore) return;
   let nodes = [];
   if (inputVal) {
     const filterMethods = (node: TreeNode) => {
-      if (!node.isLeaf()) return;
+      if (!checkStrictly && !node.isLeaf()) return;
       if (isFunction(filter)) {
         return filter(`${inputVal}`, node as TreeNodeModel & TreeNode);
       }

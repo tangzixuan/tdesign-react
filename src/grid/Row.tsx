@@ -1,6 +1,6 @@
 import React, { useEffect, useState, forwardRef, createContext } from 'react';
 import classNames from 'classnames';
-import isObject from 'lodash/isObject';
+import { isObject } from 'lodash-es';
 import useConfig from '../hooks/useConfig';
 import { StyledProps } from '../common';
 import { TdRowProps } from './type';
@@ -19,11 +19,11 @@ export interface RowProps extends TdRowProps, StyledProps {
 }
 
 const calcSize = (width: number) => {
-  const smWidth = getCssVarsValue('--td-screen-sm') || 768;
-  const mdWidth = getCssVarsValue('--td-screen-md') || 992;
-  const lgWidth = getCssVarsValue('--td-screen-lg') || 1200;
-  const xlWidth = getCssVarsValue('--td-screen-xl') || 1400;
-  const xxlWidth = getCssVarsValue('--td-screen-xxl') || 1880;
+  const smWidth = parseFloat(getCssVarsValue('--td-screen-sm') || '768');
+  const mdWidth = parseFloat(getCssVarsValue('--td-screen-md') || '992');
+  const lgWidth = parseFloat(getCssVarsValue('--td-screen-lg') || '1200');
+  const xlWidth = parseFloat(getCssVarsValue('--td-screen-xl') || '1400');
+  const xxlWidth = parseFloat(getCssVarsValue('--td-screen-xxl') || '1880');
 
   let size = 'xs';
   if (width >= xxlWidth) {
@@ -101,7 +101,7 @@ const Row = forwardRef<HTMLElement, RowProps>((props, ref) => {
     ...otherRowProps
   } = useDefaultProps<RowProps>(props, rowDefaultProps);
 
-  const [size, setSize] = useState(canUseDocument ? calcSize(window.innerWidth) : 'md');
+  const [size, setSize] = useState(() => (canUseDocument ? calcSize(window.innerWidth) : 'md'));
 
   const updateSize = () => {
     const currentSize = calcSize(window.innerWidth);

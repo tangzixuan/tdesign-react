@@ -27,12 +27,13 @@ format | Function | - | to redefine  `UploadFile` data structure。Typescript：
 formatRequest | Function | - | redefine request data。Typescript：`(requestData: { [key: string]: any }) => { [key: string]: any }` | N
 formatResponse | Function | - | redefine response data structure。Typescript：`(response: any, context: FormatResponseContext) => ResponseType ` `type ResponseType = { error?: string; url?: string; status?: 'fail' \| 'success'; files?: UploadFile[] } & Record<string, any>` `interface FormatResponseContext { file: UploadFile; currentFiles?: UploadFile[] }`。[see more ts definition](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 headers | Object | - | HTTP Request Header。Typescript：`{[key: string]: string}` | N
+imageProps | Object | - | \- | N
 imageViewerProps | Object | - | ImageViewer Component Props。Typescript：`ImageViewerProps`，[ImageViewer API Documents](./image-viewer?tab=api)。[see more ts definition](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 inputAttributes | Object | - | add attributes to HTML element `input`。Typescript：`CSSProperties` | N
 isBatchUpload | Boolean | false | make all files to be a whole package, files can only be replaced or deleted together, can not add more files | N
 locale | Object | - | upload language config, priority of `locale` is higher than global language config。Typescript：`UploadConfig` `import { UploadConfig } from '../config-provider/type'`。[see more ts definition](https://github.com/Tencent/tdesign-react/blob/develop/src/upload/type.ts) | N
 max | Number | 0 | max count of files limit | N
-method | String | POST | HTTP request method。options: POST/GET/PUT/OPTION/PATCH/post/get/put/option/patch | N
+method | String | POST | HTTP request method。options: POST/GET/PUT/OPTIONS/PATCH/post/get/put/options/patch | N
 mockProgressDuration | Number | - | mock progress duration time. more large files more duration time | N
 multiple | Boolean | false | multiple files uploading | N
 name | String | file | field name of files in upload request data | N

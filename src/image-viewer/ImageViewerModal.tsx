@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback, MouseEvent, KeyboardEvent } from 'react';
-import isArray from 'lodash/isArray';
-import isFunction from 'lodash/isFunction';
+import React, { useState, useEffect, useCallback, MouseEvent, KeyboardEvent, useRef } from 'react';
+import { isArray , isFunction } from 'lodash-es';
 import {
   ImageErrorIcon as TdImageErrorIcon,
   ImageIcon as TdImageIcon,
@@ -25,6 +24,9 @@ import useGlobalIcon from '../hooks/useGlobalIcon';
 import useIconMap from './hooks/useIconMap';
 import Image from '../image';
 
+import type { TdImageViewerProps } from './type';
+import { ImageViewerProps } from './ImageViewer';
+
 const ImageError = ({ errorText }: { errorText: string }) => {
   const { classPrefix } = useConfig();
   const { ImageErrorIcon } = useGlobalIcon({ ImageErrorIcon: TdImageErrorIcon });
@@ -47,15 +49,27 @@ interface ImageModalItemProps {
   src: string | File;
   preSrc?: string | File;
   errorText: string;
+  imageReferrerpolicy?: TdImageViewerProps['imageReferrerpolicy'];
+  isSvg: boolean;
 }
 
 // 单个弹窗实例
-export const ImageModalItem: React.FC<ImageModalItemProps> = ({ rotateZ, scale, src, preSrc, mirror, errorText }) => {
+export const ImageModalItem: React.FC<ImageModalItemProps> = ({
+  rotateZ,
+  scale,
+  src,
+  preSrc,
+  mirror,
+  errorText,
+  imageReferrerpolicy,
+  isSvg,
+}) => {
   const { classPrefix } = useConfig();
 
   const [position, onMouseDown] = usePosition({ initPosition: [0, 0] });
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const attachSvgElRef = useRef<HTMLDivElement>(null);
 
   const imgStyle = {
     transform: `rotateZ(${rotateZ}deg) scale(${scale})`,
@@ -67,15 +81,67 @@ export const ImageModalItem: React.FC<ImageModalItemProps> = ({ rotateZ, scale, 
   const { previewUrl: preSrcImagePreviewUrl } = useImagePreviewUrl(preSrc);
   const { previewUrl: mainImagePreviewUrl } = useImagePreviewUrl(src);
 
+  const createSvgShadow = async (url: string) => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      setError(true);
+      throw new Error(`Failed to fetch SVG: ${response.statusText}`);
+    }
+
+    const svgText = await response.text();
+
+    const element = attachSvgElRef.current;
+    element.innerHTML = '';
+    element.classList?.add(`${classPrefix}-image-viewer__modal-image-svg`);
+    const shadowRoot = element.attachShadow({ mode: 'closed' });
+
+    const container = document.createElement('div');
+    container.style.background = 'transparent';
+    container.innerHTML = svgText;
+    shadowRoot.appendChild(container);
+
+    const svgElement = container.querySelector('svg');
+    if (svgElement) {
+      const svgViewBox = svgElement.getAttribute('viewBox');
+      if (svgViewBox) {
+        const viewBoxValues = svgViewBox
+          .split(/[\s,]/)
+          .filter((v) => v)
+          .map(parseFloat);
+
+        // svg viewbox x(0) and y(1) offset, width(2) and height(3),eg
+        const svgViewBoxWidth = viewBoxValues[2];
+        const svgViewBoxHeight = viewBoxValues[3];
+        container.style.width = `${svgViewBoxWidth}px`;
+        container.style.height = `${svgViewBoxHeight}px`;
+      } else {
+        const bbox = svgElement.getBBox();
+        const calculatedViewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`;
+        svgElement.setAttribute('viewBox', calculatedViewBox);
+
+        container.style.width = `${bbox.width}px`;
+        container.style.height = `${bbox.height}px`;
+      }
+    }
+    setLoaded(true);
+  };
+
   useEffect(() => {
     setError(false);
   }, [preSrcImagePreviewUrl, mainImagePreviewUrl]);
+
+  useEffect(() => {
+    if (isSvg && mainImagePreviewUrl) {
+      createSvgShadow(mainImagePreviewUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainImagePreviewUrl]);
 
   return (
     <div className={`${classPrefix}-image-viewer__modal-pic`}>
       <div className={`${classPrefix}-image-viewer__modal-box`} style={boxStyle}>
         {error && <ImageError errorText={errorText} />}
-        {!error && !!preSrc && (
+        {!error && !!preSrc && preSrcImagePreviewUrl && (
           <img
             className={`${classPrefix}-image-viewer__modal-image`}
             onMouseDown={(event) => {
@@ -84,12 +150,12 @@ export const ImageModalItem: React.FC<ImageModalItemProps> = ({ rotateZ, scale, 
             }}
             src={preSrcImagePreviewUrl}
             style={preImgStyle}
-            data-testid="img-drag"
+            referrerPolicy={imageReferrerpolicy}
             alt="image"
             draggable="false"
           />
         )}
-        {!error && (
+        {!error && mainImagePreviewUrl && !isSvg && (
           <img
             className={`${classPrefix}-image-viewer__modal-image`}
             onMouseDown={(event) => {
@@ -97,11 +163,24 @@ export const ImageModalItem: React.FC<ImageModalItemProps> = ({ rotateZ, scale, 
               onMouseDown(event);
             }}
             src={mainImagePreviewUrl}
+            style={imgStyle}
             onLoad={() => setLoaded(true)}
             onError={() => setError(true)}
-            style={imgStyle}
-            data-testid="img-drag"
+            referrerPolicy={imageReferrerpolicy}
             alt="image"
+            draggable="false"
+          />
+        )}
+        {!error && !!mainImagePreviewUrl && isSvg && (
+          <div
+            ref={attachSvgElRef}
+            className={`${classPrefix}-image-viewer__modal-image`}
+            onMouseDown={(event) => {
+              event.stopPropagation();
+              onMouseDown(event);
+            }}
+            style={imgStyle}
+            data-alt="svg"
             draggable="false"
           />
         )}
@@ -228,16 +307,33 @@ type ImageViewerHeaderProps = {
   onImgClick: (index: number, ctx: { trigger: 'current' }) => void;
   images: ImageInfo[];
   currentIndex: number;
+  imageReferrerpolicy?: TdImageViewerProps['imageReferrerpolicy'];
 };
 
-function OneImagePreview({ image, classPrefix }: { image: ImageInfo; classPrefix: string }) {
+function OneImagePreview({
+  image,
+  classPrefix,
+  imageReferrerpolicy,
+}: {
+  image: ImageInfo;
+  classPrefix: string;
+  imageReferrerpolicy?: TdImageViewerProps['imageReferrerpolicy'];
+}) {
   const { previewUrl } = useImagePreviewUrl(image.thumbnail || image.mainImage);
-  return <Image alt="" error="" src={previewUrl} className={`${classPrefix}-image-viewer__header-img`} />;
+  return (
+    <Image
+      alt=""
+      error=""
+      src={previewUrl}
+      className={`${classPrefix}-image-viewer__header-img`}
+      referrerpolicy={imageReferrerpolicy}
+    />
+  );
 }
 
 const ImageViewerHeader = (props: ImageViewerHeaderProps) => {
   const { classPrefix } = useConfig();
-  const { images, currentIndex, onImgClick } = props;
+  const { images, currentIndex, onImgClick, imageReferrerpolicy } = props;
 
   const [isExpand, setIsExpand] = useState(true);
 
@@ -265,7 +361,7 @@ const ImageViewerHeader = (props: ImageViewerHeaderProps) => {
               })}
               onClick={() => onImgClick(index, { trigger: 'current' })}
             >
-              <OneImagePreview image={image} classPrefix={classPrefix} />
+              <OneImagePreview image={image} classPrefix={classPrefix} imageReferrerpolicy={imageReferrerpolicy} />
             </div>
           ))}
         </div>
@@ -274,7 +370,7 @@ const ImageViewerHeader = (props: ImageViewerHeaderProps) => {
   );
 };
 
-interface ImageModalProps {
+export interface ImageModalProps {
   title?: TNode;
   visible: boolean;
   closeOnOverlay: boolean;
@@ -292,6 +388,7 @@ interface ImageModalProps {
   closeBtn: boolean | TNode;
   closeOnEscKeydown?: boolean;
   onIndexChange?: (index: number, context: { trigger: 'prev' | 'next' }) => void;
+  imageReferrerpolicy?: ImageViewerProps['imageReferrerpolicy'];
 }
 
 // 弹窗基础组件
@@ -311,6 +408,7 @@ export const ImageModal: React.FC<ImageModalProps> = (props) => {
     visible,
     title,
     closeOnEscKeydown,
+    imageReferrerpolicy,
     ...resProps
   } = props;
   const { classPrefix } = useConfig();
@@ -410,6 +508,7 @@ export const ImageModal: React.FC<ImageModalProps> = (props) => {
         onRotate={onRotate}
         errorText={errorText}
         tipText={tipText}
+        imageReferrerpolicy={imageReferrerpolicy}
       />
     );
   }
@@ -442,7 +541,12 @@ export const ImageModal: React.FC<ImageModalProps> = (props) => {
       )}
       {images.length > 1 && (
         <>
-          <ImageViewerHeader images={images} currentIndex={index} onImgClick={setIndex} />
+          <ImageViewerHeader
+            images={images}
+            currentIndex={index}
+            onImgClick={setIndex}
+            imageReferrerpolicy={imageReferrerpolicy}
+          />
           <div className={`${classPrefix}-image-viewer__modal-index`}>
             <span>{title}</span>
             {`${index + 1}/${images.length}`}
@@ -481,6 +585,8 @@ export const ImageModal: React.FC<ImageModalProps> = (props) => {
         preSrc={currentImage.thumbnail}
         src={currentImage.mainImage}
         errorText={errorText}
+        imageReferrerpolicy={imageReferrerpolicy}
+        isSvg={currentImage.isSvg}
       />
     </div>
   );

@@ -1,17 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import isFunction from 'lodash/isFunction';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { isFunction } from 'lodash-es';
 import cx from 'classnames';
 import { createPortal } from 'react-dom';
 import Button from '../button';
 import useConfig from '../hooks/useConfig';
 import Popup, { PopupProps } from '../popup';
 import { StepPopupPlacement, TdGuideProps, GuideStep } from './type';
-import { addClass, removeClass, isFixed, getWindowScroll } from '../_util/dom';
+import { addClass, removeClass, isFixed, getWindowScroll, canUseDocument } from '../_util/dom';
 import { scrollToParentVisibleArea, getRelativePosition, getTargetElm, scrollToElm } from './utils';
-import setStyle from '../_common/js/utils/set-style';
+import setStyle from '../_common/js/utils/setStyle';
 import useControlled from '../hooks/useControlled';
 import { guideDefaultProps } from './defaultProps';
 import useDefaultProps from '../hooks/useDefaultProps';
+import useIsomorphicLayoutEffect from '../hooks/useLayoutEffect';
 
 export type GuideProps = TdGuideProps;
 
@@ -58,8 +59,6 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
     currentStepInfo?.[propsName] ?? props[propsName];
   // 当前是否为 popup
   const isPopup = getCurrentCrossProps('mode') === 'popup';
-  // 当前元素位置状态
-  const currentElmIsFixed = isFixed(currentHighlightLayerElm.current || document.body);
 
   // 设置高亮层的位置
   const setHighlightLayerPosition = (highlightLayer: HTMLElement) => {
@@ -88,7 +87,6 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
 
   const showPopupGuide = () => {
     currentHighlightLayerElm.current = getTargetElm(currentStepInfo.element);
-
     setTimeout(() => {
       scrollToParentVisibleArea(currentHighlightLayerElm.current);
       setHighlightLayerPosition(highlightLayerRef.current);
@@ -104,6 +102,7 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
   const showDialogGuide = () => {
     setTimeout(() => {
       currentHighlightLayerElm.current = dialogTooltipRef.current;
+
       scrollToParentVisibleArea(currentHighlightLayerElm.current);
       setHighlightLayerPosition(highlightLayerRef.current);
       scrollToElm(currentHighlightLayerElm.current);
@@ -179,7 +178,7 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
     }
   };
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (innerCurrent >= 0 && innerCurrent < steps.length) {
       initGuide();
     } else {
@@ -189,12 +188,24 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [innerCurrent]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     initGuide();
 
-    return destroyGuide;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(
+    () => destroyGuide,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  if (!canUseDocument) {
+    return null;
+  }
+
+  // 当前元素位置状态
+  const currentElmIsFixed = isFixed(currentHighlightLayerElm.current || document.body);
 
   const renderOverlayLayer = () =>
     createPortal(
@@ -338,7 +349,7 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
         current: innerCurrent,
         total: stepsTotal,
       };
-      renderBody = isFunction(content) ? content(contentProps) : content;
+      renderBody = isFunction(content) ? content(contentProps) : React.cloneElement(content, contentProps);
     } else {
       renderBody = renderPopupContent();
     }
@@ -354,7 +365,7 @@ const Guide: React.FC<GuideProps> = (originalProps) => {
         zIndex={zIndex}
         placement={currentStepInfo.placement as StepPopupPlacement}
         {...currentStepInfo.popupProps}
-        overlayClassName={currentStepInfo.stepOverlayClass}
+        overlayClassName={[`${prefixCls}__popup`, currentStepInfo.stepOverlayClass]}
         overlayInnerClassName={innerClassName.concat(currentStepInfo.popupProps?.overlayInnerClassName)}
       >
         <div ref={referenceLayerRef} className={cx(classes)} />

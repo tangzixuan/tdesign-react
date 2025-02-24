@@ -1,17 +1,19 @@
-import React, { FC, useContext, useState, ReactElement, useMemo } from 'react';
+import React, { FC, useContext, useState, ReactElement, useMemo, useRef } from 'react';
 import classNames from 'classnames';
+import { CSSTransition } from 'react-transition-group';
 import { StyledProps } from '../common';
 import { TdSubmenuProps } from './type';
 import useConfig from '../hooks/useConfig';
 import { MenuContext } from './MenuContext';
 import useDomRefCallback from '../hooks/useDomRefCallback';
-import useRipple from '../_util/useRipple';
+import useRipple from '../hooks/useRipple';
 import { getSubMenuMaxHeight } from './_util/getSubMenuChildStyle';
 import checkSubMenuChildrenActive from './_util/checkSubMenuChildrenActive';
 import FakeArrow from '../common/FakeArrow';
 import { checkIsSubMenu, checkIsMenuGroup } from './_util/checkMenuType';
 import { cacularPaddingLeft } from './_util/cacularPaddingLeft';
 import { Popup, PopupPlacement } from '../popup';
+import parseTNode from '../_util/parseTNode';
 
 export interface SubMenuProps extends TdSubmenuProps, StyledProps {}
 
@@ -21,7 +23,6 @@ export interface SubMenuWithCustomizeProps extends SubMenuProps {
 
 const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
   const { content, children = content, disabled, icon, title, value, className, style, level = 1, popupProps } = props;
-
   const { overlayClassName, overlayInnerClassName, ...restPopupProps } = popupProps || {};
 
   const { classPrefix } = useConfig();
@@ -35,7 +36,7 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
   // 非 popup 展开
   const isExpand = expanded.includes(value) && !disabled && !isPopUp;
 
-  const handleClick = (e: React.MouseEvent<HTMLLIElement, MouseEvent>) => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     e.stopPropagation();
     onExpand(value, expanded);
     setOpen(false);
@@ -57,6 +58,7 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
         `${classPrefix}-menu__item--plain`,
         `${classPrefix}-submenu__item`,
         `${classPrefix}-submenu__item--icon`,
+        (child as ReactElement).props?.className,
       ),
     }),
   );
@@ -78,6 +80,23 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
 
   const fakeArrowStyle = isPopUp && level > 1 ? { transform: 'rotate(-90deg)' } : {};
 
+  const contentRef = useRef<HTMLUListElement>();
+
+  const transitionCallbacks = {
+    onEnter: () => {
+      contentRef.current.style.height = `${contentRef?.current.scrollHeight}px`;
+    },
+    onEntered: () => {
+      contentRef.current.style.height = 'auto';
+    },
+    onExit: () => {
+      contentRef.current.style.height = `${contentRef?.current.scrollHeight}px`;
+    },
+    onExiting: () => {
+      contentRef.current.style.height = '0px';
+    },
+  };
+
   const pupContent = (
     <ul
       className={classNames(`${classPrefix}-menu__popup-wrapper`, {
@@ -96,7 +115,6 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
         [`${classPrefix}-is-disabled`]: disabled,
         [`${classPrefix}-is-opened`]: isOpen,
       })}
-      onClick={handleClick}
       style={style}
       onMouseEnter={() => handleMouseEvent('enter')}
       onMouseLeave={() => handleMouseEvent('leave')}
@@ -106,18 +124,29 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
           [`${classPrefix}-is-opened`]: isOpen,
           [`${classPrefix}-is-active`]: checkSubMenuChildrenActive(children, active),
         })}
+        onClick={handleClick}
       >
-        {icon} <span className={`${classPrefix}-menu__content`}>{title}</span>
-        <FakeArrow style={fakeArrowStyle} isActive={level === 1 && isOpen} disabled={disabled} />
+        {parseTNode(icon)}
+        <span className={`${classPrefix}-menu__content`}>{title}</span>
+        <FakeArrow style={fakeArrowStyle} isActive={isOpen} disabled={disabled} />
       </div>
       {!isPopUp && (
-        <ul
-          key="normal"
-          style={{ ...childStyle, '--padding-left': `${menuPaddingLeft}px` } as React.CSSProperties}
-          className={`${classPrefix}-menu__sub`}
-        >
-          {childrens}
-        </ul>
+        <CSSTransition in={isOpen} appear timeout={300} nodeRef={contentRef} {...transitionCallbacks}>
+          <ul
+            key="normal"
+            style={
+              {
+                ...childStyle,
+                '--padding-left': `${menuPaddingLeft}px`,
+                overflow: 'hidden',
+              } as React.CSSProperties
+            }
+            className={classNames(`${classPrefix}-menu__sub`, `${classPrefix}-slide-down-enter-active`)}
+            ref={contentRef}
+          >
+            {childrens}
+          </ul>
+        </CSSTransition>
       )}
     </li>
   );
@@ -153,7 +182,7 @@ const SubAccordion: FC<SubMenuWithCustomizeProps> = (props) => {
 };
 
 const SubTitleMenu: FC<SubMenuWithCustomizeProps> = (props) => {
-  const { className, style, children, disabled, title, value, level = 1, popupProps } = props;
+  const { className, style, children, disabled, icon, title, value, level = 1, popupProps } = props;
 
   const { overlayClassName, overlayInnerClassName, ...restPopupProps } = popupProps || {};
 
@@ -224,6 +253,7 @@ const SubTitleMenu: FC<SubMenuWithCustomizeProps> = (props) => {
         onClick={handleClick}
         style={style}
       >
+        {parseTNode(icon)}
         <span>{title}</span>
         {isPopUp && <FakeArrow style={fakeArrowStyle} isActive={level === 1 && open} />}
       </div>

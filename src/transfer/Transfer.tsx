@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import difference from 'lodash/difference';
+import { difference , isArray } from 'lodash-es';
 import classnames from 'classnames';
-import isFunction from 'lodash/isFunction';
 import { ChevronRightIcon as TdChevronRightIcon, ChevronLeftIcon as TdChevronLeftIcon } from 'tdesign-icons-react';
 import { TdTransferProps, DataOption, TransferValue, TransferListType } from './type';
 import useConfig from '../hooks/useConfig';
@@ -12,6 +11,7 @@ import { filterCheckedTreeNodes, getTargetNodes, getDefaultValue, getJSX, getLea
 import { TNode, StyledProps } from '../common';
 import { useLocaleReceiver } from '../locale/LocalReceiver';
 import { transferDefaultProps } from './defaultProps';
+import useDefaultProps from '../hooks/useDefaultProps';
 
 export interface TransferProps extends TdTransferProps, StyledProps {
   content?: Array<TNode>;
@@ -27,7 +27,8 @@ interface CheckedInterface {
   target: Array<TransferValue>;
 }
 
-const Transfer: React.FunctionComponent<TransferProps> = (props) => {
+const Transfer: React.FunctionComponent<TransferProps> = (originalProps) => {
+  const props = useDefaultProps<TransferProps>(originalProps, transferDefaultProps);
   const {
     data,
     search,
@@ -47,6 +48,7 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
     content,
     tree,
     showCheckAll,
+    direction = 'both',
   } = props;
   const [state, setState] = useState<StateInterface>(() => ({
     source: data.filter((item) => !defaultValue.includes(item.value)),
@@ -84,17 +86,17 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
   }, [searchState, state]);
 
   const [SourceEmptyCmp, TargetEmptyCmp] = getDefaultValue(empty, t(local.empty)).map((item) => getJSX(item));
-  const [sourceDisable, targetDisable] = getDefaultValue(disabled, false);
-  const [sourcePagonation, targetPagonation] = getDefaultValue(pagination);
+  const sourceDisabled = isArray(disabled) ? disabled[0] : disabled;
+  const targetDisabled = isArray(disabled) ? disabled[1] : disabled;
+
+  const [sourcePagination, targetPagination] = getDefaultValue(pagination);
   const [sourceTitle, targetTitle] = getDefaultValue(title as any as any).map((item) => getJSX(item));
   const [leftOperation, rightOperation] = getDefaultValue(operation as any, [
     () => <ChevronRightIcon />,
     () => <ChevronLeftIcon />,
   ]).map((item) => getJSX(item));
   const [sourceFooter, targetFooter] = getDefaultValue(footer as any).map((item) => getJSX(item));
-  const [sourceTransferItem, targetTransferItem] = getDefaultValue(
-    isFunction(transferItem) ? transferItem({ data, index: undefined, type: undefined }) : transferItem,
-  );
+
   const [sourceContent, targetContent] = getDefaultValue(content);
 
   const [showCheckAllSource, showCheckAllTarget] = useMemo(
@@ -151,29 +153,35 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
   };
 
   const OperationsCmp = () => {
-    const isSourceDisabled = sourceDisable || !checkeds.source.length;
-    const isTargetDisabled = targetDisable || !checkeds.target.length;
+    const isSourceDisabled = sourceDisabled || !checkeds.source.length;
+    const isTargetDisabled = targetDisabled || !checkeds.target.length;
+    const isToRightShow = direction !== 'left';
+    const isToLeftShow = direction !== 'right';
 
     return (
       <div className={`${transferClassName}__operations`}>
-        <Button
-          size="small"
-          key={isSourceDisabled ? 'right-outline' : 'right-base'}
-          variant="outline"
-          disabled={isSourceDisabled}
-          onClick={transformSource}
-        >
-          {leftOperation}
-        </Button>
-        <Button
-          size="small"
-          key={isSourceDisabled ? 'left-outline' : 'left-base'}
-          variant="outline"
-          disabled={isTargetDisabled}
-          onClick={transformTarget}
-        >
-          {rightOperation}
-        </Button>
+        {isToRightShow && (
+          <Button
+            size="small"
+            key={isSourceDisabled ? 'right-outline' : 'right-base'}
+            variant="outline"
+            disabled={isSourceDisabled}
+            onClick={transformSource}
+          >
+            {leftOperation}
+          </Button>
+        )}
+        {isToLeftShow && (
+          <Button
+            size="small"
+            key={isSourceDisabled ? 'left-outline' : 'left-base'}
+            variant="outline"
+            disabled={isTargetDisabled}
+            onClick={transformTarget}
+          >
+            {rightOperation}
+          </Button>
+        )}
       </div>
     );
   };
@@ -231,15 +239,16 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
     >
       <TransferList
         className={`${transferClassName}__list-source`}
+        listType="source"
         data={sourceData}
         search={search}
         checked={checkeds.source}
         empty={SourceEmptyCmp}
-        disabled={sourceDisable}
-        pagination={sourcePagonation}
+        disabled={sourceDisabled}
+        pagination={sourcePagination}
         title={sourceTitle}
         footer={sourceFooter}
-        transferItem={sourceTransferItem}
+        transferItem={transferItem}
         content={sourceContent}
         onCheckbox={(value) => handleCheckChange(value, 'source')}
         onSearch={(val: string) => setSearchState({ ...searchState, source: val })}
@@ -249,15 +258,16 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
       {OperationsCmp()}
       <TransferList
         className={`${transferClassName}__list-target`}
+        listType="target"
         data={targetData}
         search={search}
         checked={checkeds.target}
         empty={TargetEmptyCmp}
-        disabled={targetDisable}
-        pagination={targetPagonation}
+        disabled={targetDisabled}
+        pagination={targetPagination}
         title={targetTitle}
         footer={targetFooter}
-        transferItem={targetTransferItem}
+        transferItem={transferItem}
         content={targetContent}
         onCheckbox={(value) => handleCheckChange(value, 'target')}
         onSearch={(val: string) => setSearchState({ ...searchState, target: val })}
@@ -269,6 +279,5 @@ const Transfer: React.FunctionComponent<TransferProps> = (props) => {
 };
 
 Transfer.displayName = 'Transfer';
-Transfer.defaultProps = transferDefaultProps;
 
 export default Transfer;

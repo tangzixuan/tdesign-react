@@ -211,7 +211,7 @@ describe('Tree test', () => {
     expect(nodeOpenItems.length).toBe(1);
   });
 
-  test('props.line', async () => {
+  describe('Test props.line', async () => {
     const data = [
       {
         label: '第1一段',
@@ -253,18 +253,18 @@ describe('Tree test', () => {
         line: <span className="custom-line">line</span>,
       });
       await mockDelay(300);
-      expect(container.querySelectorAll('.custom-line').length).toBe(4);
+      expect(container.querySelectorAll('.custom-line').length).toBe(6);
     });
 
     it('wehen props.line is a customized function, it works fine', async () => {
-      const line: any = (prams) => <span className="custom-line">{prams}</span>;
+      const line: any = () => <span className="custom-line"></span>;
       const { container } = await renderTreeWithProps({
         data,
         expandAll: true,
         line,
       });
       await mockDelay(300);
-      expect(container.querySelectorAll('.custom-line').length).toBe(4);
+      expect(container.querySelectorAll('.custom-line').length).toBe(6);
     });
   });
   test('when props.icon is a validElement, it works fine', async () => {
@@ -319,5 +319,72 @@ describe('Tree test', () => {
     const { container } = await renderTreeWithProps({ data });
     await mockDelay(300);
     expect(container.querySelectorAll('.t-loading').length).toBe(1);
+  });
+
+  test('custom label', async () => {
+    const data = [
+      {
+        label: '第1一段',
+        value: 1,
+        children: [
+          {
+            label: '第二段',
+            value: '1-1',
+          },
+        ],
+      },
+      {
+        label: '第二段',
+        value: 2,
+      },
+    ];
+    const { container } = await renderTreeWithProps({
+      data,
+      label: ({ data, setData }) =>
+        data.isEditing ? (
+          <input
+            className="tree-item-input"
+            defaultValue={data.label as string}
+            onBlur={(e) => {
+              console.log('blur', { ...data, isEditing: false });
+              setData({ ...data, label: e.target.value, isEditing: false });
+            }}
+            onKeyDown={(e) => {
+              console.log('keydown', e.key);
+              if (e.key === 'Enter') {
+                setData({ ...data, label: e.currentTarget.value, isEditing: false });
+                console.log('Enter setData({ ...data, name: e.target.value, isEditing: false })');
+              }
+              if (e.key === 'Escape') {
+                setData({ ...data, isEditing: false });
+                console.log('ESC setData({ ...data, isEditing: false })');
+              }
+            }}
+          />
+        ) : (
+          <span
+            className="tree-item-span"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setData({ ...data, isEditing: true });
+            }}
+          >
+            {data.label}
+          </span>
+        ),
+    });
+    await mockDelay(300);
+    expect(container.querySelector('.tree-item-span')).not.toBeNull();
+    fireEvent.dblClick(container.querySelector('.tree-item-span'));
+    await mockDelay(300);
+    expect(container.querySelector('.tree-item-input')).not.toBeNull();
+    fireEvent.change(container.querySelector('.tree-item-input'), { target: { value: '123' } });
+    expect(container.querySelector('.tree-item-input').value).toBe('123');
+    container.querySelector('.tree-item-input').focus();
+    container.querySelector('.tree-item-input').blur();
+    await mockDelay(300);
+    expect(container.querySelector('.tree-item-input')).toBeNull();
+    expect(container.querySelector('.tree-item-span')).not.toBeNull();
+    expect(container.querySelector('.tree-item-span').textContent).toBe('123');
   });
 });

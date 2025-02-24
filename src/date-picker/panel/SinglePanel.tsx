@@ -1,14 +1,17 @@
 import React, { forwardRef } from 'react';
 import classNames from 'classnames';
+import { isFunction } from 'lodash-es';
 import useConfig from '../../hooks/useConfig';
 import { StyledProps } from '../../common';
 import PanelContent from './PanelContent';
 import ExtraContent from './ExtraContent';
-import { TdDatePickerProps } from '../type';
+import type { DateValue, TdDatePickerProps } from '../type';
 import type { TdTimePickerProps } from '../../time-picker';
 import { getDefaultFormat, parseToDayjs } from '../../_common/js/date-picker/format';
 import useTableData from '../hooks/useTableData';
 import useDisableDate from '../hooks/useDisableDate';
+import useDefaultProps from '../../hooks/useDefaultProps';
+import { parseToDateTime } from '../utils';
 
 export interface SinglePanelProps extends TdDatePickerProps, StyledProps {
   year?: number;
@@ -27,20 +30,26 @@ export interface SinglePanelProps extends TdDatePickerProps, StyledProps {
   onTimePickerChange?: TdTimePickerProps['onChange'];
 }
 
-const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((props, ref) => {
+const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((originalProps, ref) => {
   const { classPrefix, datePicker: globalDatePickerConfig } = useConfig();
   const panelName = `${classPrefix}-date-picker__panel`;
+  const props = useDefaultProps<SinglePanelProps>(originalProps, {
+    mode: 'date',
+    enableTimePicker: false,
+    presetsPlacement: 'bottom',
+  });
   const {
     value,
     mode,
     presetsPlacement,
     firstDayOfWeek = globalDatePickerConfig.firstDayOfWeek,
-
+    needConfirm,
     style,
     className,
     year,
     month,
     onPanelClick,
+    disableTime,
   } = props;
 
   const { format } = getDefaultFormat({
@@ -51,12 +60,22 @@ const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((props, ref) =>
 
   const disableDateOptions = useDisableDate({ disableDate: props.disableDate, mode: props.mode, format });
 
+  const disableTimeOptions: TdTimePickerProps['disableTime'] = (h: number, m: number, s: number, ms: number) => {
+    if (!isFunction(disableTime) || !value) {
+      return {};
+    }
+
+    return disableTime(parseToDateTime(value as DateValue, format, [h, m, s, ms]));
+  };
+
   const tableData = useTableData({
+    value,
     year,
     month,
     mode,
-    start: value ? parseToDayjs(value, format).toDate() : undefined,
+    start: value ? parseToDayjs(props.multiple ? value[0] : value, format).toDate() : undefined,
     firstDayOfWeek,
+    multiple: props.multiple,
     ...disableDateOptions,
   });
 
@@ -69,9 +88,12 @@ const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((props, ref) =>
     firstDayOfWeek,
     tableData,
     popupVisible: props.popupVisible,
-
+    multiple: props.multiple,
     time: props.time,
-    timePickerProps: props.timePickerProps,
+    timePickerProps: {
+      disableTime: disableTimeOptions,
+      ...props.timePickerProps,
+    },
     enableTimePicker: props.enableTimePicker,
     onMonthChange: props.onMonthChange,
     onYearChange: props.onYearChange,
@@ -89,6 +111,7 @@ const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((props, ref) =>
     onPresetClick: props.onPresetClick,
     onConfirmClick: props.onConfirmClick,
     selectedValue: props.value,
+    needConfirm,
   };
 
   return (
@@ -108,11 +131,5 @@ const SinglePanel = forwardRef<HTMLDivElement, SinglePanelProps>((props, ref) =>
 });
 
 SinglePanel.displayName = 'SinglePanel';
-
-SinglePanel.defaultProps = {
-  mode: 'date',
-  enableTimePicker: false,
-  presetsPlacement: 'bottom',
-};
 
 export default SinglePanel;

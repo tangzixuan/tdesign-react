@@ -1,10 +1,10 @@
 import React, { CompositionEvent, KeyboardEvent, useRef, useImperativeHandle, forwardRef, MouseEvent } from 'react';
 import { CloseCircleFilledIcon as TdCloseCircleFilledIcon } from 'tdesign-icons-react';
-import isFunction from 'lodash/isFunction';
+import { isFunction } from 'lodash-es';
 import classnames from 'classnames';
 import useConfig from '../hooks/useConfig';
 import useGlobalIcon from '../hooks/useGlobalIcon';
-import useDragSorter from '../_util/useDragSorter';
+import useDragSorter from '../hooks/useDragSorter';
 import TInput, { InputValue, InputRef } from '../input';
 import { TdTagInputProps } from './type';
 import useTagScroll from './useTagScroll';
@@ -13,10 +13,14 @@ import useHover from './useHover';
 import useControlled from '../hooks/useControlled';
 import { StyledProps } from '../common';
 import { tagInputDefaultProps } from './defaultProps';
+import useDefaultProps from '../hooks/useDefaultProps';
 
-export interface TagInputProps extends TdTagInputProps, StyledProps {}
+export interface TagInputProps extends TdTagInputProps, StyledProps {
+  options?: any[]; // 参数穿透options, 给SelectInput/SelectInput 自定义选中项呈现的内容和多选状态下设置折叠项内容
+}
 
-const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef>) => {
+const TagInput = forwardRef<InputRef, TagInputProps>((originalProps, ref) => {
+  const props = useDefaultProps<TagInputProps>(originalProps, tagInputDefaultProps);
   const { classPrefix: prefix } = useConfig();
   const { CloseCircleFilledIcon } = useGlobalIcon({
     CloseCircleFilledIcon: TdCloseCircleFilledIcon,
@@ -25,6 +29,7 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
   const {
     excessTagsDisplayType,
     autoWidth,
+    borderless,
     readonly,
     disabled,
     clearable,
@@ -37,6 +42,8 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
     status,
     suffixIcon,
     suffix,
+    prefixIcon,
+    maxRows,
     onClick,
     onPaste,
     onFocus,
@@ -94,7 +101,7 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
 
   const onInnerClick = (context: { e: MouseEvent<HTMLDivElement> }) => {
     if (!props.disabled && !props.readonly) {
-      (tagInputRef.current as any).inputElement?.focus?.();
+      (tagInputRef.current as any)?.inputElement?.focus?.();
     }
     onClick?.(context);
   };
@@ -114,7 +121,7 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
   const displayNode = isFunction(valueDisplay)
     ? valueDisplay({
         value: tagValue,
-        onClose: (index, item) => onClose({ index, item }),
+        onClose: (index) => onClose({ index }),
       })
     : valueDisplay;
 
@@ -127,9 +134,17 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
       [WITH_SUFFIX_ICON_CLASS]: !!suffixIconNode,
       [`${prefix}-is-empty`]: isEmpty,
       [`${prefix}-tag-input--with-tag`]: !isEmpty,
+      [`${prefix}-tag-input--max-rows`]: excessTagsDisplayType === 'break-line' && maxRows,
     },
     props.className,
   ];
+
+  const maxRowsStyle = maxRows
+    ? ({
+        '--max-rows': maxRows,
+        '--tag-input-size': size,
+      } as React.CSSProperties)
+    : {};
 
   return (
     <TInput
@@ -141,15 +156,20 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
       autoWidth={true} // 控制input_inner的宽度 设置为true让内部input不会提前换行
       onWheel={onWheel}
       size={size}
+      borderless={borderless}
       readonly={readonly}
       disabled={disabled}
       label={renderLabel({ displayNode, label })}
       className={classnames(classes)}
-      style={props.style}
+      style={{
+        ...props.style,
+        ...maxRowsStyle,
+      }}
       tips={tips}
       status={status}
       placeholder={tagInputPlaceholder}
       suffix={suffix}
+      prefixIcon={prefixIcon}
       suffixIcon={suffixIconNode}
       showInput={!inputProps?.readonly || !tagValue || !tagValue?.length}
       keepWrapperWidth={!autoWidth}
@@ -183,6 +203,5 @@ const TagInput = forwardRef((props: TagInputProps, ref: React.RefObject<InputRef
 });
 
 TagInput.displayName = 'TagInput';
-TagInput.defaultProps = tagInputDefaultProps;
 
 export default TagInput;

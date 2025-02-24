@@ -1,15 +1,16 @@
 import { useEffect, useMemo, MutableRefObject, useCallback, CSSProperties } from 'react';
 import useVirtualScroll from '../../hooks/useVirtualScroll';
 import { TdSelectProps } from '../type';
-import { TScroll } from '../../common';
+import { TScroll, SizeEnum } from '../../common';
 
 interface PanelVirtualScroll {
   scroll?: TdSelectProps['scroll'];
   popupContentRef: MutableRefObject<HTMLDivElement>;
   options: TdSelectProps['options'];
+  size: SizeEnum;
 }
 
-const usePanelVirtualScroll = ({ popupContentRef, scroll, options }: PanelVirtualScroll) => {
+const usePanelVirtualScroll = ({ popupContentRef, scroll, options, size }: PanelVirtualScroll) => {
   const scrollThreshold = scroll?.threshold || 100;
   const scrollType = scroll?.type;
 
@@ -18,16 +19,22 @@ const usePanelVirtualScroll = ({ popupContentRef, scroll, options }: PanelVirtua
     [scrollType, scrollThreshold, options],
   );
 
-  const scrollParams = useMemo<TScroll>(
-    () => ({
+  const scrollParams = useMemo<TScroll>(() => {
+    const heightMap = {
+      small: 20,
+      medium: 28,
+      large: 36,
+    };
+    const rowHeight = heightMap[size] || 28;
+    return {
       type: 'virtual',
       isFixedRowHeight: scroll?.isFixedRowHeight || false,
-      rowHeight: scroll?.rowHeight || 28, // 默认每行高度28
+      rowHeight: scroll?.rowHeight || rowHeight,
       bufferSize: scroll?.bufferSize || 20,
       threshold: scrollThreshold,
-    }),
-    [scroll, scrollThreshold],
-  );
+    };
+  }, [scroll, scrollThreshold, size]);
+
   const {
     visibleData = null,
     handleScroll: handleVirtualScroll = null,
@@ -47,7 +54,7 @@ const usePanelVirtualScroll = ({ popupContentRef, scroll, options }: PanelVirtua
     }
     const target = e.target as HTMLElement;
     const top = target.scrollTop;
-    // 排除横向滚动出发的纵向虚拟滚动计算
+    // 排除横向滚动触发的纵向虚拟滚动计算
     if (Math.abs(lastScrollY - top) > 5) {
       handleVirtualScroll();
       // eslint-disable-next-line react-hooks/exhaustive-deps

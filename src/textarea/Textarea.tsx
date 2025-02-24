@@ -8,11 +8,13 @@ import useControlled from '../hooks/useControlled';
 import { getCharacterLength, getUnicodeLength, limitUnicodeMaxLength } from '../_common/js/utils/helper';
 import calcTextareaHeight from '../_common/js/utils/calcTextareaHeight';
 import { textareaDefaultProps } from './defaultProps';
+import useDefaultProps from '../hooks/useDefaultProps';
+import useIsomorphicLayoutEffect from '../hooks/useLayoutEffect';
 
 export interface TextareaProps
   extends Omit<
       React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-      'value' | 'defaultValue' | 'onBlur' | 'onChange' | 'onFocus'
+      'value' | 'defaultValue' | 'onBlur' | 'onChange' | 'onFocus' | 'onKeyDown' | 'onKeyPress' | 'onKeyUp'
     >,
     TdTextareaProps,
     StyledProps {}
@@ -21,7 +23,8 @@ export interface TextareaRefInterface extends React.RefObject<unknown> {
   textareaElement: HTMLTextAreaElement;
 }
 
-const Textarea = forwardRef((props: TextareaProps, ref: TextareaRefInterface) => {
+const Textarea = forwardRef<TextareaRefInterface, TextareaProps>((originalProps, ref) => {
+  const props = useDefaultProps<TextareaProps>(originalProps, textareaDefaultProps);
   const {
     disabled,
     maxlength,
@@ -90,11 +93,6 @@ const Textarea = forwardRef((props: TextareaProps, ref: TextareaRefInterface) =>
     }
   }, [autosize]);
 
-  useEffect(() => {
-    adjustTextareaHeight();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [textareaRef?.current]);
-
   function inputValueChangeHandle(e: React.FormEvent<HTMLTextAreaElement>) {
     const { target } = e;
     let val = (target as HTMLInputElement).value;
@@ -112,7 +110,7 @@ const Textarea = forwardRef((props: TextareaProps, ref: TextareaRefInterface) =>
     composingRef.current = true;
   }
 
-  function handleCompositionEnd(e) {
+  function handleCompositionEnd(e: React.FormEvent<HTMLTextAreaElement>) {
     if (composingRef.current) {
       composingRef.current = false;
       inputValueChangeHandle(e);
@@ -130,7 +128,18 @@ const Textarea = forwardRef((props: TextareaProps, ref: TextareaRefInterface) =>
     </span>
   );
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
+    adjustTextareaHeight();
+    if (autofocus && textareaRef.current) {
+      const textarea = textareaRef.current;
+      textarea.focus();
+      // 将光标移到内容的末尾
+      textarea.selectionStart = textarea.value.length;
+      textarea.selectionEnd = textarea.value.length;
+    }
+  }, []);
+
+  useIsomorphicLayoutEffect(() => {
     // 当未设置 autosize 时，需要将 textarea 的 height 设置为 auto，以支持原生的 textarea rows 属性
     if (autosize === false) {
       setTextareaStyle({ height: 'auto', minHeight: 'auto' });
@@ -201,6 +210,5 @@ const Textarea = forwardRef((props: TextareaProps, ref: TextareaRefInterface) =>
 });
 
 Textarea.displayName = 'Textarea';
-Textarea.defaultProps = textareaDefaultProps;
 
 export default Textarea;

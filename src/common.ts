@@ -60,9 +60,13 @@ export type TreeOptionData<T = string | number> = {
 
 export type SizeEnum = 'small' | 'medium' | 'large';
 
+export type ShapeEnum = 'circle' | 'round';
+
 export type HorizontalAlignEnum = 'left' | 'center' | 'right';
 
 export type VerticalAlignEnum = 'top' | 'middle' | 'bottom';
+
+export type LayoutEnum = 'vertical' | 'horizontal';
 
 export type ClassName = { [className: string]: any } | ClassName[] | string;
 

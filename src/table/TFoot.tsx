@@ -1,7 +1,6 @@
 import React, { CSSProperties, useRef } from 'react';
-import isFunction from 'lodash/isFunction';
+import { isFunction , get } from 'lodash-es';
 import classNames from 'classnames';
-import get from 'lodash/get';
 import { BaseTableCellParams, RowspanColspan, TableRowData, TdBaseTableProps } from './type';
 import { formatRowAttributes, formatRowClassNames } from './utils';
 import { RowAndColFixedPosition } from './interface';
@@ -27,7 +26,7 @@ export interface TFootProps {
 
 export default function TFoot(props: TFootProps) {
   const { footData, columns, rowKey, footerSummary } = props;
-  const tfooterRef = useRef();
+  const tfooterRef = useRef<HTMLTableSectionElement>();
   const classnames = useClassName();
 
   const { skipSpansMap } = useRowspanAndColspan(footData, columns, rowKey, props.rowspanAndColspanInFooter);

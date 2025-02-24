@@ -1,7 +1,6 @@
 import React, { MouseEvent, useMemo, useState } from 'react';
 import classNames from 'classnames';
-import isFunction from 'lodash/isFunction';
-import isObject from 'lodash/isObject';
+import { isFunction , isObject } from 'lodash-es';
 import {
   BrowseIcon as TdBrowseIcon,
   DeleteIcon as TdDeleteIcon,
@@ -173,7 +172,13 @@ const ImageFlowList = (props: ImageFlowListProps) => {
             </div>
           )}
           {(['waiting', 'success'].includes(file.status) || (!file.status && file.url)) && (
-            <Image className={`${uploadPrefix}__card-image`} src={file.url || file.raw} error="" loading="" />
+            <Image
+              className={`${uploadPrefix}__card-image`}
+              fit="contain"
+              src={file.url || file.raw}
+              error=""
+              loading=""
+            />
           )}
           <div className={`${uploadPrefix}__card-mask`}>
             {(file.url || file.raw) && !['progress', 'fail'].includes(file.status) && (

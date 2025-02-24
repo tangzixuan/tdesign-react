@@ -1,7 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import classNames from 'classnames';
-import isFunction from 'lodash/isFunction';
-import isString from 'lodash/isString';
+import { isFunction , isString } from 'lodash-es';
 import { TdSliderProps } from './type';
 import useConfig from '../hooks/useConfig';
 import useControlled from '../hooks/useControlled';
@@ -154,9 +153,8 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>((originalProps, ref
   };
 
   const onSliderChange = (event: React.MouseEvent | MouseEvent, nodeIndex?: SliderHandleNode) => {
-    if (disabled) {
-      return;
-    }
+    if (disabled || !sliderRef.current) return;
+
     const clientKey = isVertical ? 'clientY' : 'clientX';
     const sliderPositionInfo = sliderRef.current.getBoundingClientRect();
     const sliderOffset = sliderPositionInfo[startDirection];
